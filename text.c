@@ -56,29 +56,29 @@ void text_to_graphics_routine( char* string, char* buffer )
             {
                 // calculate curr plane
                 int plane = k % 4;
+                int plane_pos = 3 - plane;
                 // assinging two addresses per plane for each k
                 int offset = k / 4;
 
-                if ( ( ( 1 << k ) & font_data[c][j] ) == 1 ) 
+                unsigned char mask = 1 << ( 7 - k );
+
+                if ( ( mask & font_data[65][j] ) != 0 ) 
                 {
-                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 1;
+                    buffer[plane_pos * PLANE_SIZE + i * 2 + j * 80 + offset] = 1;
                 }
                 else 
                 {
-                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 2;
+                    //buffer[plane_pos * PLANE_SIZE + i * PX_PLANE_CHAR + j * PX_PLANE_LINE + offset] = 0;
+                    buffer[plane_pos * PLANE_SIZE + i * 2 + j * 80 + offset] = 13;                
                 }
             }
         }
     }
 
+     //for( i = 2880; i < 5760; i++ )
+       //  buffer[i] = 13;
 
-    for ( i = 0; i < BUF_SIZE; i++ )
-    {
-        buffer[i] = 2;
-    }
 }
-
-
 
 /* 
  * These font data were read out of video memory during text mode and

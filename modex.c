@@ -523,14 +523,17 @@ void show_screen() {
 
 void show_status_bar() {
 
-    char buf[BUF_SIZE];    /* source address for copy             */
+    char buffer[BUF_SIZE];    /* source address for copy             */
 
     int p_off;              /* plane offset of first display plane */
     int i;                  /* loop index over video planes        */
 
-    char* string = "joe";
+    char* string = "abcdefghijklmnopqrstuvwxyz1234567890joe";
 
-    text_to_graphics_routine( string, buf );
+    for( i = 0; i < BUF_SIZE; i++ )
+         buffer[i] = 13;
+
+    text_to_graphics_routine( string, buffer );
 
     /*
      * Calculate offset of build buffer plane to be mapped into plane 0
@@ -544,7 +547,7 @@ void show_status_bar() {
     /* Draw to each plane in the video memory. */
     for (i = 0; i < 4; i++) {
         SET_WRITE_MASK(1 << (i + 8));
-        copy_status_bar((unsigned char*)buf + ((p_off - i + 4) & 3) * PLANE_SIZE + (p_off < i), target_img);
+        copy_status_bar((unsigned char*)buffer + ((p_off - i + 4) & 3) * PLANE_SIZE + (p_off < i), target_img);
     }
 }
 
