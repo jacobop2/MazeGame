@@ -622,7 +622,37 @@ void draw_full_block(int pos_x, int pos_y, unsigned char* blk) {
  *   SIDE EFFECTS: draws into the build buffer
  */
 int draw_vert_line(int x) {
-    /* to be written... */
+    unsigned char buf[SCROLL_Y_DIM];    /* buffer for graphical image of line */
+    unsigned char* addr;                /* address of first pixel in build    */
+                                        /*     buffer (without plane offset)  */
+    int plane;                          /* offset of plane to draw     */
+    int p_off = 0;                      /* offset of plane to represent next draw pixel    */
+    int i;                              /* loop index over pixels             */
+
+    /* Check whether requested line falls in the logical view window. */
+    if (x < 0 || x >= SCROLL_X_DIM)
+        return -1;
+
+    /* Adjust x to the logical row value. */
+    x += show_x;
+
+    /* Get the image of the line. */
+    (*vert_line_fn) (x, show_y, buf);
+
+    /* Calculate starting address in build buffer. */
+    addr = img3 + (x >> 2) + show_y * SCROLL_X_WIDTH;
+
+    /* Calculate plane offset of first pixel. */
+    plane = (3 - (x & 3));
+
+    /* Copy image data into appropriate planes in build buffer.
+       Increment p_off to shift to next row in the build buffer */
+    for (i = 0; i < SCROLL_Y_DIM; i++) {
+        addr[plane * SCROLL_SIZE + p_off] = buf[i];
+        p_off += SCROLL_X_WIDTH;
+    }
+
+    /* Return success. */
     return 0;
 }
 
