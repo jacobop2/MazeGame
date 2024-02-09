@@ -53,7 +53,7 @@
 #define PX_LINE 8
 #define PX_PLANE_LINE PX_LINE / 4
 
-int text_to_graphics_routine( char* string, char* buffer );
+void text_to_graphics_routine( char* string, char* buffer );
 
 /* Standard VGA text font. */
 extern unsigned char font_data[256][16];

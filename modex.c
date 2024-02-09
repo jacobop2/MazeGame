@@ -521,7 +521,7 @@ void show_screen() {
     OUTW(0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
 }
 
-int show_status_bar() {
+void show_status_bar() {
 
     char buf[BUF_SIZE];    /* source address for copy             */
 
@@ -530,10 +530,7 @@ int show_status_bar() {
 
     char* string = "joe";
 
-    if ( !text_to_graphics_routine( string, buf ) )
-    {
-        return -1;
-    }
+    text_to_graphics_routine( string, buf );
 
     /*
      * Calculate offset of build buffer plane to be mapped into plane 0
@@ -542,22 +539,13 @@ int show_status_bar() {
     p_off = (3 - (show_x & 3));
 
     /* Switch to the other target screen in video memory. */
-    target_img ^= 0x0000;
+    target_img = 0x0000;
 
     /* Draw to each plane in the video memory. */
     for (i = 0; i < 4; i++) {
         SET_WRITE_MASK(1 << (i + 8));
-        copy_status_bar(buf + ((p_off - i + 4) & 3) * SCROLL_SIZE + (p_off < i), target_img);
+        copy_status_bar((unsigned char*)buf + ((p_off - i + 4) & 3) * PLANE_SIZE + (p_off < i), target_img);
     }
-
-    /*
-     * Change the VGA registers to point the top left of the screen
-     * to the video memory that we just filled.
-     */
-    OUTW(0x03D4, (target_img & 0xFF00) | 0x0C);
-    OUTW(0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
-
-    return 0;
 }
 
 /*
@@ -1036,7 +1024,7 @@ static void copy_image(unsigned char* img, unsigned short scr_addr) {
      */
     asm volatile ("                                             \n\
         cld                                                     \n\
-        movl $16000,%%ecx                                       \n\
+        movl $14560,%%ecx                                       \n\
         rep movsb    /* copy ECX bytes from M[ESI] to M[EDI] */ \n\
         "
         : /* no outputs */

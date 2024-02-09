@@ -38,24 +38,19 @@
 
 #include "text.h"
 
-int text_to_graphics_routine( char* string, char* buffer )
+void text_to_graphics_routine( char* string, char* buffer )
 {
     // Retrieve input length
     unsigned int clen = strlen( string );
-
-    // Empty/null check input
-    if ( 0 == clen ) return -1;
 
     int i, j, k;
     // iterate through every input character
     for ( i = 0; i < clen; i++ )
     {
         unsigned char c = string[i];
-
         // iterate through every char line
         for ( j = 0; j < FONT_HEIGHT; j++ )
         {
-            unsigned char font_data_result = font_data[c][j];
             // iterate through each bit of result
             for ( k = 0; k < 8; k++ )
             {
@@ -64,19 +59,23 @@ int text_to_graphics_routine( char* string, char* buffer )
                 // assinging two addresses per plane for each k
                 int offset = k / 4;
 
-                if ( ( ( 1 << k ) & font_data_result ) == 1 ) 
+                if ( ( ( 1 << k ) & font_data[c][j] ) == 1 ) 
                 {
-                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 0xFF;
+                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 1;
                 }
                 else 
                 {
-                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 0x00;
+                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 2;
                 }
             }
         }
     }
 
-    return 0;
+
+    for ( i = 0; i < BUF_SIZE; i++ )
+    {
+        buffer[i] = 2;
+    }
 }
 
 
