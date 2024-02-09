@@ -38,6 +38,49 @@
 
 #include "text.h"
 
+int text_to_graphics_routine( char* string, char* buffer )
+{
+    // Retrieve input length
+    unsigned int clen = strlen( string );
+
+    // Empty/null check input
+    if ( 0 == clen ) return -1;
+
+    int i, j, k;
+    // iterate through every input character
+    for ( i = 0; i < clen; i++ )
+    {
+        unsigned char c = string[i];
+
+        // iterate through every char line
+        for ( j = 0; j < FONT_HEIGHT; j++ )
+        {
+            unsigned char font_data_result = font_data[c][j];
+            // iterate through each bit of result
+            for ( k = 0; k < 8; k++ )
+            {
+                // calculate curr plane
+                int plane = k % 4;
+                // assinging two addresses per plane for each k
+                int offset = k / 4;
+
+                if ( ( ( 1 << k ) & font_data_result ) == 1 ) 
+                {
+                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 0xFF;
+                }
+                else 
+                {
+                    buffer[plane * PLANE_SIZE + i * PX_PLANE_CHAR + k * PX_PLANE_LINE + offset] = 0x00;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+
 /* 
  * These font data were read out of video memory during text mode and
  * saved here.  They could be read in the same manner at the start of a

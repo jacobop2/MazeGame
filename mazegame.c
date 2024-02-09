@@ -423,6 +423,9 @@ static void *rtc_thread(void *arg) {
         draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
 
+
+        show_status_bar();
+
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
 
@@ -527,7 +530,10 @@ static void *rtc_thread(void *arg) {
                 }
             }
             if (need_redraw)
-                show_screen();    
+            {
+                show_screen();  
+                show_status_bar();
+            }  
             need_redraw = 0;
         }    
     }

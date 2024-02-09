@@ -85,9 +85,9 @@ static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
 };
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
     0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
-    0x0008, 0x4109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+    0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
     0x9C10, 0x8E11, 0x8F12, 0x2813, 0x0014, 0x9615, 0xB916, 0xE317,
-    0xFF18
+    0x6B18
 };
 static unsigned char mode_X_attr[NUM_ATTR_REGS * 2] = {
     0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03,
@@ -136,6 +136,7 @@ static void fill_palette();
 static void write_font_data();
 static void set_text_mode_3(int clear_scr);
 static void copy_image(unsigned char* img, unsigned short scr_addr);
+static void copy_status_bar(unsigned char* img, unsigned short scr_addr);
 
 /*
  * Images are built in this buffer, then copied to the video memory.
@@ -300,7 +301,10 @@ int set_mode_X(void (*horiz_fill_fn)(int, int, unsigned char[SCROLL_X_DIM]),
     }
 
     /* One display page goes at the start of video memory. */
-    target_img = 0x0000;
+
+    /* 18 pixel status bar height * 320 px width = 5760 px total
+       4 px per address -> 5760 / 4 = 1440 = 0x05A0        */ 
+    target_img = 0x05A0;
 
     /* Map video memory and obtain permission for VGA port access. */
     if (open_memory_and_ports() == -1)
@@ -515,6 +519,45 @@ void show_screen() {
      */
     OUTW(0x03D4, (target_img & 0xFF00) | 0x0C);
     OUTW(0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
+}
+
+int show_status_bar() {
+
+    char buf[BUF_SIZE];    /* source address for copy             */
+
+    int p_off;              /* plane offset of first display plane */
+    int i;                  /* loop index over video planes        */
+
+    char* string = "joe";
+
+    if ( !text_to_graphics_routine( string, buf ) )
+    {
+        return -1;
+    }
+
+    /*
+     * Calculate offset of build buffer plane to be mapped into plane 0
+     * of display.
+     */
+    p_off = (3 - (show_x & 3));
+
+    /* Switch to the other target screen in video memory. */
+    target_img ^= 0x0000;
+
+    /* Draw to each plane in the video memory. */
+    for (i = 0; i < 4; i++) {
+        SET_WRITE_MASK(1 << (i + 8));
+        copy_status_bar(buf + ((p_off - i + 4) & 3) * SCROLL_SIZE + (p_off < i), target_img);
+    }
+
+    /*
+     * Change the VGA registers to point the top left of the screen
+     * to the video memory that we just filled.
+     */
+    OUTW(0x03D4, (target_img & 0xFF00) | 0x0C);
+    OUTW(0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
+
+    return 0;
 }
 
 /*
@@ -994,6 +1037,23 @@ static void copy_image(unsigned char* img, unsigned short scr_addr) {
     asm volatile ("                                             \n\
         cld                                                     \n\
         movl $16000,%%ecx                                       \n\
+        rep movsb    /* copy ECX bytes from M[ESI] to M[EDI] */ \n\
+        "
+        : /* no outputs */
+        : "S"(img), "D"(mem_image + scr_addr)
+        : "eax", "ecx", "memory"
+    );
+}
+
+static void copy_status_bar(unsigned char* img, unsigned short scr_addr) {
+    /*
+     * memcpy is actually probably good enough here, and is usually
+     * implemented using ISA-specific features like those below,
+     * but the code here provides an example of x86 string moves
+     */
+    asm volatile ("                                             \n\
+        cld                                                     \n\
+        movl $1440,%%ecx                                       \n\
         rep movsb    /* copy ECX bytes from M[ESI] to M[EDI] */ \n\
         "
         : /* no outputs */
