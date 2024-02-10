@@ -38,6 +38,15 @@
 
 #include "text.h"
 
+/*
+ * text_to_graphics_routine
+ *   DESCRIPTION: Translate a string input into graphical format in the status bar buffer
+ *   INPUTS: char* string -> string to be translated
+ *           char* buffer -> buffer filled with graphical representation of string
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: fills buffer with the graphical representation of string
+ */
 void text_to_graphics_routine( char* string, char* buffer )
 {
     // Retrieve input length
@@ -52,7 +61,7 @@ void text_to_graphics_routine( char* string, char* buffer )
         for ( j = 0; j < FONT_HEIGHT; j++ )
         {
             // iterate through each bit of result
-            for ( k = 0; k < 8; k++ )
+            for ( k = 0; k < FONT_WIDTH; k++ )
             {
                 // calculate curr plane
                 int plane = k % 4;
@@ -60,24 +69,27 @@ void text_to_graphics_routine( char* string, char* buffer )
                 // assinging two addresses per plane for each k
                 int offset = k / 4;
 
-                unsigned char mask = 1 << ( 7 - k );
+                unsigned char mask = 1 << ( FONT_WIDTH - 1 - k );
 
-                if ( ( mask & font_data[65][j] ) != 0 ) 
+                /* BUFFER ADDRESS CALCULATION 
+                    PX_PLANE_ROW accounts for the blank row before text is drawn
+                    plane_pos * PLANE_SIZE increments address according to calculated plane
+                    i * 2 accounts for the addresses filled by previous characters
+                    j * PX_PLANE_ROW accounts for adding a row to move to the lower row
+                    offset accounts which number character is added to the plane buf per line */
+
+                // 0xFF
+                if ( ( mask & font_data[c][j] ) != 0 ) 
                 {
-                    buffer[plane_pos * PLANE_SIZE + i * 2 + j * 80 + offset] = 1;
+                    buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = 1;
                 }
                 else 
                 {
-                    //buffer[plane_pos * PLANE_SIZE + i * PX_PLANE_CHAR + j * PX_PLANE_LINE + offset] = 0;
-                    buffer[plane_pos * PLANE_SIZE + i * 2 + j * 80 + offset] = 13;                
+                    buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = 13;                
                 }
             }
         }
     }
-
-     //for( i = 2880; i < 5760; i++ )
-       //  buffer[i] = 13;
-
 }
 
 /* 

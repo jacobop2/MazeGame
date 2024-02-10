@@ -521,6 +521,16 @@ void show_screen() {
     OUTW(0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
 }
 
+/*
+ * show_status_bar
+ *   DESCRIPTION: Show the status bar on the view window.
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: translates a string input into graphical format
+ *                 fill out the status bar buffer
+ *                 copy the status bar buffer to video memory
+ */
 void show_status_bar() {
 
     char buffer[BUF_SIZE];    /* source address for copy             */
@@ -528,7 +538,7 @@ void show_status_bar() {
     int p_off;              /* plane offset of first display plane */
     int i;                  /* loop index over video planes        */
 
-    char* string = "abcdefghijklmnopqrstuvwxyz1234567890joe";
+    char* string = "abcdefghijklmnopqrstuvwxyz1234567890joes";
 
     for( i = 0; i < BUF_SIZE; i++ )
          buffer[i] = 13;
@@ -541,7 +551,7 @@ void show_status_bar() {
      */
     p_off = (3 - (show_x & 3));
 
-    /* Switch to the other target screen in video memory. */
+    /* Switch to the status bar target screen */
     target_img = 0x0000;
 
     /* Draw to each plane in the video memory. */
@@ -1036,6 +1046,16 @@ static void copy_image(unsigned char* img, unsigned short scr_addr) {
     );
 }
 
+/*
+ * copy_status_bar
+ *   DESCRIPTION: Copy one plane of the status bar from the status bar
+ *                buffer to video memory.
+ *   INPUTS: img -- a pointer to a single screen plane in the status bar buffer
+ *           scr_addr -- the destination offset in video memory
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies a plane from the status bar buffer to video memory
+ */
 static void copy_status_bar(unsigned char* img, unsigned short scr_addr) {
     /*
      * memcpy is actually probably good enough here, and is usually
