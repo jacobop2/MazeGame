@@ -541,7 +541,7 @@ void show_status_bar() {
     char* string = "abcdefghijklmnopqrstuvwxyz1234567890joes";
 
     for( i = 0; i < BUF_SIZE; i++ )
-         buffer[i] = 13;
+          buffer[i] = ON_COLOR;
 
     text_to_graphics_routine( string, buffer );
 
@@ -549,7 +549,7 @@ void show_status_bar() {
      * Calculate offset of build buffer plane to be mapped into plane 0
      * of display.
      */
-    p_off = (3 - (show_x & 3));
+    p_off = 3;
 
     /* Switch to the status bar target screen */
     target_img = 0x0000;
@@ -558,6 +558,7 @@ void show_status_bar() {
     for (i = 0; i < 4; i++) {
         SET_WRITE_MASK(1 << (i + 8));
         copy_status_bar((unsigned char*)buffer + ((p_off - i + 4) & 3) * PLANE_SIZE + (p_off < i), target_img);
+        //copy_status_bar((unsigned char*)buffer + i * PLANE_SIZE, target_img);
     }
 }
 

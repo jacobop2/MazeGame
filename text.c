@@ -66,6 +66,7 @@ void text_to_graphics_routine( char* string, char* buffer )
                 // calculate curr plane
                 int plane = k % 4;
                 int plane_pos = 3 - plane;
+                //int plane_pos = plane;
                 // assinging two addresses per plane for each k
                 int offset = k / 4;
 
@@ -79,13 +80,13 @@ void text_to_graphics_routine( char* string, char* buffer )
                     offset accounts which number character is added to the plane buf per line */
 
                 // 0xFF
-                if ( ( mask & font_data[c][j] ) != 0 ) 
+                if ( ( mask & font_data[c][j] ) != 0 )
                 {
-                    buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = 1;
+                    buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = ON_COLOR;
                 }
-                else 
+                else
                 {
-                    buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = 13;                
+                    buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = OFF_COLOR;                
                 }
             }
         }

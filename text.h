@@ -52,6 +52,9 @@
 #define PX_ROW 320
 #define PX_PLANE_ROW PX_ROW / 4
 
+#define ON_COLOR 13
+#define OFF_COLOR 0xFF
+
 void text_to_graphics_routine( char* string, char* buffer );
 
 /* Standard VGA text font. */
