@@ -86,6 +86,8 @@ typedef struct {
     int time_to_first_fruit;     /* 300 to 120, in steps of -30      */
     int time_between_fruits;     /* 300 to 60, in steps of -30       */
     int tick_usec;         /* 20000 to 5000, in steps of -1750 */
+
+    time_t time_start;              /* hold the level start time */
     
     /* dynamic values within a level -- you may want to add more... */
     unsigned int map_x, map_y;   /* current upper left display pixel */
@@ -102,6 +104,8 @@ static void move_left(int* xpos);
 static int unveil_around_player(int play_x, int play_y);
 static void *rtc_thread(void *arg);
 static void *keyboard_thread(void *arg);
+
+void setup_show_status_bar();
 
 /* 
  * prepare_maze_level
@@ -147,6 +151,8 @@ static int prepare_maze_level(int level) {
     set_view_window(game_info.map_x, game_info.map_y);
     for (i = 0; i < SCROLL_Y_DIM; i++)
         (void)draw_horiz_line (i);
+
+    game_info.time_start = time(NULL);
 
     /* Return success. */
     return 0;
@@ -423,13 +429,13 @@ static void *rtc_thread(void *arg) {
         draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
 
-
-        show_status_bar();
-
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
 
         while ((quit_flag == 0) && (goto_next_level == 0)) {
+
+            setup_show_status_bar();
+
             // Wait for Periodic Interrupt
             ret = read(fd, &data, sizeof(unsigned long));
         
@@ -532,7 +538,7 @@ static void *rtc_thread(void *arg) {
             if (need_redraw)
             {
                 show_screen();  
-                show_status_bar();
+                setup_show_status_bar();
             }  
             need_redraw = 0;
         }    
@@ -541,6 +547,35 @@ static void *rtc_thread(void *arg) {
         winner = 1;
     
     return 0;
+}
+
+void setup_show_status_bar()
+{                
+    // init vars and fetch fruits
+    char s[40];
+    int n_fruits = 0;
+    int time_min = 0;
+    int time_sec = 0;
+    int time_curr = time(NULL);
+    time_t time_diff = 0;
+
+    time_diff = time_curr - game_info.time_start;
+    time_min = (int)time_diff / 60; // extract m
+    time_sec = (int)time_diff % 60; // extract m
+
+    n_fruits = get_num_fruits();
+
+    // account for plurality
+    if ( 1 == n_fruits && game_info.number != 10 )
+        sprintf( s, "     Level %d     %d Fruit     %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces
+    else if ( 1 == n_fruits && game_info.number == 10 )
+        sprintf( s, "     Level %d    %d Fruit     %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces
+    else if ( 0 == n_fruits && game_info.number == 10 )
+        sprintf( s, "     Level %d    %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces
+    else
+        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces                  
+
+    show_status_bar( s );
 }
 
 /*

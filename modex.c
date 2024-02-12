@@ -531,14 +531,14 @@ void show_screen() {
  *                 fill out the status bar buffer
  *                 copy the status bar buffer to video memory
  */
-void show_status_bar() {
+void show_status_bar( char* string ) {
 
     char buffer[BUF_SIZE];    /* source address for copy             */
 
     int p_off;              /* plane offset of first display plane */
     int i;                  /* loop index over video planes        */
 
-    char* string = "abcdefghijklmnopqrstuvwxyz1234567890joes";
+    //char* string = "abcdefghijklmnopqrstuvwxyz1234567890joes";
 
     for( i = 0; i < BUF_SIZE; i++ )
           buffer[i] = ON_COLOR;
