@@ -43,18 +43,23 @@
 
 #define IMAGE_X_DIM 320
 
-// MAX BUF SIZE = Width 320
+// MAX BUF SIZE
 // 320 * 18 = 5760
 // 4 Planes per buf, plane size = buf size / 4
 #define BUF_SIZE 5760
 #define PLANE_SIZE BUF_SIZE / 4
 
+/* PX_ROW -- number of pixels per row */
+/* PX_PLANE_ROW -- number of pixels per row per plane */
 #define PX_ROW 320
 #define PX_PLANE_ROW PX_ROW / 4
 
+/* set ON_COLOR to pink and off color to black */
 #define ON_COLOR 13
 #define OFF_COLOR 0xFF
 
+/* translate an input string into graphical display 
+   and store in input buffer */
 void text_to_graphics_routine( char* string, char* buffer );
 
 /* Standard VGA text font. */

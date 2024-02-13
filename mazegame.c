@@ -105,7 +105,7 @@ static int unveil_around_player(int play_x, int play_y);
 static void *rtc_thread(void *arg);
 static void *keyboard_thread(void *arg);
 
-void setup_show_status_bar();
+static void setup_show_status_bar();
 
 /* 
  * prepare_maze_level
@@ -426,11 +426,13 @@ static void *rtc_thread(void *arg) {
         // Show maze around the player's original position
         (void)unveil_around_player(play_x, play_y);
 
+        /* save background block and draw player */
         unsigned char back_buf[BLOCK_X_DIM * BLOCK_Y_DIM];
         save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
         //draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
 
+        /* redraw background block to remove player trail */
         draw_full_block(play_x, play_y, back_buf);
 
         // get first Periodic Interrupt
@@ -559,7 +561,15 @@ static void *rtc_thread(void *arg) {
     return 0;
 }
 
-void setup_show_status_bar()
+/*
+ * setup_show_status_bar
+ *   DESCRIPTION: prepare the string for a call to show_status_bar
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: store level num, num fruits, and the time in a string
+ */
+static void setup_show_status_bar()
 {                
     // init vars and fetch fruits
     char s[40];

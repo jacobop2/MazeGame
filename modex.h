@@ -121,6 +121,7 @@ extern void set_view_window(int scr_x, int scr_y);
 /* show the logical view window on the monitor */
 extern void show_screen();
 
+/* show the status bar window on the monitor */
 void show_status_bar( char* string );
 
 /* clear the video memory in mode X */
@@ -135,7 +136,7 @@ extern void draw_full_block(int pos_x, int pos_y, unsigned char* blk);
 
 /*
  * save a 12x12 block with upper left corner at logical position
- * (pos_x,pos_y); 
+ * (pos_x,pos_y). Draw the player on the screen using the player mask
  */
 extern void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf);
 

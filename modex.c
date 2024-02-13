@@ -83,6 +83,8 @@
 static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
     0x0100, 0x2101, 0x0F02, 0x0003, 0x0604
 };
+
+/* changed reg 18 to allow split screen */
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
     0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
     0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
@@ -538,8 +540,6 @@ void show_status_bar( char* string ) {
     int p_off;              /* plane offset of first display plane */
     int i;                  /* loop index over video planes        */
 
-    //char* string = "abcdefghijklmnopqrstuvwxyz1234567890joes";
-
     for( i = 0; i < BUF_SIZE; i++ )
           buffer[i] = ON_COLOR;
 
@@ -558,7 +558,6 @@ void show_status_bar( char* string ) {
     for (i = 0; i < 4; i++) {
         SET_WRITE_MASK(1 << (i + 8));
         copy_status_bar((unsigned char*)buffer + ((p_off - i + 4) & 3) * PLANE_SIZE + (p_off < i), target_img);
-        //copy_status_bar((unsigned char*)buffer + i * PLANE_SIZE, target_img);
     }
 }
 
@@ -643,7 +642,19 @@ void draw_full_block(int pos_x, int pos_y, unsigned char* blk) {
     }
 }
 
-/**/
+/*
+ * save_full_block
+ *   DESCRIPTION: apply the player mask and given blk to draw to the screen
+ *                store old screen in buffer for undraw
+ *   INPUTS: (pos_x,pos_y) -- coordinates of upper left corner of block
+ *           blk -- image data for block (one byte per pixel, as a C array
+ *                  of dimensions [BLOCK_Y_DIM][BLOCK_X_DIM])
+ *           mask -- player mask data
+ *           buf -- buffer to hold maze floor for later redraw
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: draws into the build buffer, fills buf with old maze floor
+ */
 void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf){
     int dx, dy;          /* loop indices for x and y traversal of block */
     int x_left, x_right; /* clipping limits in horizontal dimension     */
@@ -688,33 +699,24 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
     /* Adjust y_bottom to hold the number of pixel rows to be drawn. */
     y_bottom -= y_top;
 
-    /* Draw the clipped image. */
+    /* Fill out buffer, draw using player mask */
     for (dy = 0; dy < y_bottom; dy++, pos_y++) {
         for (dx = 0; dx < x_right; dx++, pos_x++, blk++, mask++, buf++)
         {
+            /* save value from screen into buffer */
             *buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE);
-            if( *mask == 1) //check if pixels are copied from player image
+            /* check if the player mask indicates player should be drawn, if so draw */
+            if( *mask == 1)
             {
                 *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
             }
         }
+        /* increment variables */
         pos_x -= x_right;
         blk += x_left;
         mask += x_left;
         buf += x_left;
     }
-
-    //     /* Draw the clipped image. */
-    // for (dy = 0; dy < y_bottom; dy++, pos_y++) {
-    //     for (dx = 0; dx < x_right; dx++, pos_x++, blk++, buf++, mask++)
-    //     {
-    //         *buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH + (3 - (pos_x & 3)) * SCROLL_SIZE);
-    //     }
-    //     pos_x -= x_right;
-    //     blk += x_left;
-    //     buf += x_left;
-    // }
-
 
     return;
 }
