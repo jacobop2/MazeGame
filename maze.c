@@ -51,7 +51,7 @@
 #define TEST_MAZE_GEN 0
 
 /* Set to 1 to remove all walls as a debugging aid. (Nate Taylor, S07). */
-#define GOD_MODE 1
+#define GOD_MODE 0
 
 /* local functions--see function headers for details */
 static int mark_maze_area(int x, int y);
@@ -775,27 +775,6 @@ unsigned char* get_player_block(dir_t cur_dir) {
  */
 unsigned char* get_player_mask(dir_t cur_dir) {
     return (unsigned char*)blocks[BLOCK_PLAYER_MASK_UP + cur_dir];
-}
-
-void mask_player( int play_x, int play_y, int dir, char* back_buf )
-{
-    unsigned char* p_mask = get_player_mask( dir );
-    unsigned char* p_block = get_player_block( dir );
-
-    int i;
-
-    /* loop over entire block */
-    for ( i = 0; i < BLOCK_Y_DIM * BLOCK_X_DIM; i++ )
-    {
-        /* if the mask is high for this pixel, copy for drawing */
-        if ( 0 == p_mask[i] )
-        {
-            //back_buf[i] = p_block[i];
-            back_buf[i] = 13;
-        }
-    }
-
-    draw_full_block( play_x, play_y, (unsigned char*)back_buf );
 }
 
 /* 

@@ -637,15 +637,14 @@ void draw_full_block(int pos_x, int pos_y, unsigned char* blk) {
     /* Draw the clipped image. */
     for (dy = 0; dy < y_bottom; dy++, pos_y++) {
         for (dx = 0; dx < x_right; dx++, pos_x++, blk++)
-            *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +
-            (3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
+            *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH + (3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
         pos_x -= x_right;
         blk += x_left;
     }
 }
 
 /**/
-void save_full_block(int pos_x, int pos_y, unsigned char* blk) {
+void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf){
     int dx, dy;          /* loop indices for x and y traversal of block */
     int x_left, x_right; /* clipping limits in horizontal dimension     */
     int y_top, y_bottom; /* clipping limits in vertical dimension       */
@@ -688,6 +687,34 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk) {
     blk += y_top * BLOCK_X_DIM;
     /* Adjust y_bottom to hold the number of pixel rows to be drawn. */
     y_bottom -= y_top;
+
+    /* Draw the clipped image. */
+    for (dy = 0; dy < y_bottom; dy++, pos_y++) {
+        for (dx = 0; dx < x_right; dx++, pos_x++, blk++, mask++, buf++)
+        {
+            *buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE);
+            if( *mask == 1) //check if pixels are copied from player image
+            {
+                *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
+            }
+        }
+        pos_x -= x_right;
+        blk += x_left;
+        mask += x_left;
+        buf += x_left;
+    }
+
+    //     /* Draw the clipped image. */
+    // for (dy = 0; dy < y_bottom; dy++, pos_y++) {
+    //     for (dx = 0; dx < x_right; dx++, pos_x++, blk++, buf++, mask++)
+    //     {
+    //         *buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH + (3 - (pos_x & 3)) * SCROLL_SIZE);
+    //     }
+    //     pos_x -= x_right;
+    //     blk += x_left;
+    //     buf += x_left;
+    // }
+
 
     return;
 }

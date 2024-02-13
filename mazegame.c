@@ -280,7 +280,7 @@ static int unveil_around_player(int play_x, int play_y) {
     /* Unveil spaces around the player. */
     for (i = -1; i < 2; i++)
         for (j = -1; j < 2; j++)
-            unveil_space(x + i, y + j);
+        unveil_space(x + i, y + j);
         unveil_space(x, y - 2);
         unveil_space(x + 2, y);
         unveil_space(x, y + 2);
@@ -426,10 +426,12 @@ static void *rtc_thread(void *arg) {
         // Show maze around the player's original position
         (void)unveil_around_player(play_x, play_y);
 
-        save_full_block( play_x, play_y, get_player_block(last_dir) );
-
-        draw_full_block(play_x, play_y, get_player_block(last_dir));
+        unsigned char back_buf[BLOCK_X_DIM * BLOCK_Y_DIM];
+        save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
+        //draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
+
+        draw_full_block(play_x, play_y, back_buf);
 
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
@@ -437,9 +439,6 @@ static void *rtc_thread(void *arg) {
         while ((quit_flag == 0) && (goto_next_level == 0)) {
 
             setup_show_status_bar();
-
-            char back_buf[BLOCK_X_DIM * BLOCK_Y_DIM];
-            mask_player( play_x, play_y, dir, back_buf );
 
             // Wait for Periodic Interrupt
             ret = read(fd, &data, sizeof(unsigned long));
@@ -536,13 +535,19 @@ static void *rtc_thread(void *arg) {
                             move_left(&play_x);  
                             break;
                     }
-                    draw_full_block(play_x, play_y, get_player_block(last_dir));    
+                    save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
+                    draw_full_block(play_x, play_y, get_player_block(last_dir));
+
+                    /* undraw player trail with save background */
+                    draw_full_block(play_x, play_y, back_buf);     
                     need_redraw = 1;
                 }
             }
             if (need_redraw)
             {
+                save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
                 show_screen();  
+                draw_full_block(play_x, play_y, back_buf);    
                 setup_show_status_bar();
             }  
             need_redraw = 0;
