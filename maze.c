@@ -777,6 +777,27 @@ unsigned char* get_player_mask(dir_t cur_dir) {
     return (unsigned char*)blocks[BLOCK_PLAYER_MASK_UP + cur_dir];
 }
 
+void mask_player( int play_x, int play_y, int dir, char* back_buf )
+{
+    unsigned char* p_mask = get_player_mask( dir );
+    unsigned char* p_block = get_player_block( dir );
+
+    int i;
+
+    /* loop over entire block */
+    for ( i = 0; i < BLOCK_Y_DIM * BLOCK_X_DIM; i++ )
+    {
+        /* if the mask is high for this pixel, copy for drawing */
+        if ( 0 == p_mask[i] )
+        {
+            //back_buf[i] = p_block[i];
+            back_buf[i] = 13;
+        }
+    }
+
+    draw_full_block( play_x, play_y, (unsigned char*)back_buf );
+}
+
 /* 
  * find_open_directions
  *   DESCRIPTION: Determine which directions are open to movement from a 
@@ -787,6 +808,7 @@ unsigned char* get_player_mask(dir_t cur_dir) {
  *   RETURN VALUE: none
  *   SIDE EFFECTS: none
  */
+
 void find_open_directions(int x, int y, int op[NUM_DIRS]) {
     op[DIR_UP]    = (0 == (maze[MAZE_INDEX(x, y - 1)] & MAZE_WALL));
     op[DIR_RIGHT] = (0 == (maze[MAZE_INDEX(x + 1, y)] & MAZE_WALL));

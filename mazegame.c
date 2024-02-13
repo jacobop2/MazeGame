@@ -426,6 +426,8 @@ static void *rtc_thread(void *arg) {
         // Show maze around the player's original position
         (void)unveil_around_player(play_x, play_y);
 
+        save_full_block( play_x, play_y, get_player_block(last_dir) );
+
         draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
 
@@ -435,6 +437,9 @@ static void *rtc_thread(void *arg) {
         while ((quit_flag == 0) && (goto_next_level == 0)) {
 
             setup_show_status_bar();
+
+            char back_buf[BLOCK_X_DIM * BLOCK_Y_DIM];
+            mask_player( play_x, play_y, dir, back_buf );
 
             // Wait for Periodic Interrupt
             ret = read(fd, &data, sizeof(unsigned long));

@@ -133,6 +133,12 @@ extern void clear_screens();
  */
 extern void draw_full_block(int pos_x, int pos_y, unsigned char* blk);
 
+/*
+ * save a 12x12 block with upper left corner at logical position
+ * (pos_x,pos_y); 
+ */
+extern void save_full_block(int pos_x, int pos_y, unsigned char* blk);
+
 /* draw a horizontal line at vertical pixel y within the logical view window */
 extern int draw_horiz_line(int y);
 
