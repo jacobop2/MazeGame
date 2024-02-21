@@ -537,15 +537,15 @@ static void *rtc_thread(void *arg) {
                             move_left(&play_x);  
                             break;
                     }
-                    save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
-                    draw_full_block(play_x, play_y, get_player_block(last_dir));
+                    //save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
+                    //draw_full_block(play_x, play_y, get_player_block(last_dir));
 
                     /* undraw player trail with save background */
-                    draw_full_block(play_x, play_y, back_buf);     
+                    //draw_full_block(play_x, play_y, back_buf);     
                     need_redraw = 1;
                 }
             }
-            if (need_redraw)
+            if (1)
             {
                 save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
                 show_screen();  
