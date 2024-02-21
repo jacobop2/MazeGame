@@ -54,9 +54,9 @@
 #define PX_ROW 320
 #define PX_PLANE_ROW PX_ROW / 4
 
-/* set ON_COLOR to pink and off color to black */
+/* set ON_COLOR to white and off color to palette 0x23 which will be updated */
 #define ON_COLOR 0x0F
-#define OFF_COLOR 0x00
+#define OFF_COLOR 34
 
 /* translate an input string into graphical display 
    and store in input buffer */

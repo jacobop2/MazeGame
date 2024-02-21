@@ -401,8 +401,55 @@ static void *rtc_thread(void *arg) {
     int need_redraw = 0;
     int goto_next_level = 0;
 
+    /* Declare vars for updating player color, default = white */
+    char r2 = 0x00;
+    char g2 = 0x00;
+    char b2 = 0x00;
+
     // Loop over levels until a level is lost or quit.
     for (level = 1; (level <= MAX_LEVEL) && (quit_flag == 0); level++) {
+
+        /* Declare vars for updating player color, default = white */
+        char r = 0x3F;
+        char g = 0x3F;
+        char b = 0x3F;
+
+        /* set colors for walls and status bar based on level */
+        switch ( level % 6 )
+        {
+            case 0:
+                r2 = 0x00;
+                g2 = 0x00;
+                b2 = 0x3F;
+                break;
+            case 1:
+                r2 = 0x00;
+                g2 = 0x00;
+                b2 = 0x00;
+                break;
+            case 2:
+                r2 = 0x3F;
+                g2 = 0x00;
+                b2 = 0x00;
+                break;
+            case 3:
+                r2 = 0x3F;
+                g2 = 0x1F;
+                b2 = 0x00;
+                break;
+            case 4:
+                r2 = 0x3F;
+                g2 = 0x3F;
+                b2 = 0x00;
+                break;
+            case 5:
+                r2 = 0x00;
+                g2 = 0x3F;
+                b2 = 0x00;
+                break;
+        }
+        set_palette_color( 0x22, r2, g2, b2 );
+
         // Prepare for the level.  If we fail, just let the player win.
         if (prepare_maze_level(level) != 0)
             break;
@@ -436,11 +483,6 @@ static void *rtc_thread(void *arg) {
 
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
-
-        /* Declare vars for updating player color, default = white */
-        char r = 0x3F;
-        char g = 0x3F;
-        char b = 0x3F;
 
         /* Declare a counter to check tick decrements */
         int counter = 0;
@@ -621,7 +663,7 @@ static void setup_show_status_bar()
 int main() {
     int ret;
     struct termios tio_new;
-    unsigned long update_rate = 32; /* in Hz */
+    unsigned long update_rate = 244; /* in Hz */
 
     pthread_t tid1;
     pthread_t tid2;
