@@ -140,6 +140,8 @@ extern void draw_full_block(int pos_x, int pos_y, unsigned char* blk);
  */
 extern void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf);
 
+void set_palette_color( char index, char red, char green, char blue );
+
 /* draw a horizontal line at vertical pixel y within the logical view window */
 extern int draw_horiz_line(int y);
 

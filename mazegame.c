@@ -429,7 +429,6 @@ static void *rtc_thread(void *arg) {
         /* save background block and draw player */
         unsigned char back_buf[BLOCK_X_DIM * BLOCK_Y_DIM];
         save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
-        //draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
 
         /* redraw background block to remove player trail */
@@ -437,6 +436,14 @@ static void *rtc_thread(void *arg) {
 
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
+
+        /* Declare vars for updating player color, default = white */
+        char r = 0x3F;
+        char g = 0x3F;
+        char b = 0x3F;
+
+        /* Declare a counter to check tick decrements */
+        int counter = 0;
 
         while ((quit_flag == 0) && (goto_next_level == 0)) {
 
@@ -466,6 +473,16 @@ static void *rtc_thread(void *arg) {
 
                 // Lock the mutex
                 pthread_mutex_lock(&mtx);
+
+                counter++;
+                if ( counter % 3 == 0 )
+                {
+                    r = ( r + 3 ) % 0x40;
+                    g = ( g + 2 ) % 0x40;
+                    b = ( b + 1 ) % 0x40;
+                }
+
+                set_palette_color( 0x20, r, g, b );
 
                 // Check to see if a key has been pressed
                 if (next_dir != dir) {
@@ -536,12 +553,7 @@ static void *rtc_thread(void *arg) {
                         case DIR_LEFT:  
                             move_left(&play_x);  
                             break;
-                    }
-                    //save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
-                    //draw_full_block(play_x, play_y, get_player_block(last_dir));
-
-                    /* undraw player trail with save background */
-                    //draw_full_block(play_x, play_y, back_buf);     
+                    }   
                     need_redraw = 1;
                 }
             }

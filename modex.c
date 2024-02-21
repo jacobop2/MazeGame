@@ -722,6 +722,28 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
 }
 
 /*
+ * set_palette_color
+ *   DESCRIPTION: 
+ *   INPUTS: char index -- 8 bit value of palette to write to
+ *           char red, green, blue -- 6 bit color values to write
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: set a vga palette at a given index with a given color
+ */
+void set_palette_color( char index, char red, char green, char blue )
+{
+    if ( index < 0x20 || index > 0x2F ) return;
+
+    OUTB( 0x03C8, index );
+
+    /* Write input oclors into palette */
+    OUTB( 0x03C9, red );
+    OUTB( 0x03C9, blue );
+    OUTB( 0x03C9, green );
+}
+
+
+/*
  * The functions inside the preprocessor block below rely on functions
  * in maze.c to generate graphical images of the maze.  These functions
  * are neither available nor necessary for the text restoration program

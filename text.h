@@ -55,8 +55,8 @@
 #define PX_PLANE_ROW PX_ROW / 4
 
 /* set ON_COLOR to pink and off color to black */
-#define ON_COLOR 32
-#define OFF_COLOR 88
+#define ON_COLOR 0x0F
+#define OFF_COLOR 0x00
 
 /* translate an input string into graphical display 
    and store in input buffer */

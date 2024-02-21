@@ -16,3 +16,9 @@ b - player not masked at the beginning of the game, then the mask
     applies when the player starts moving
     - was not applying the player mask outside of the event loop,
       leading to no mask until the game is running
+
+CHECKPOINT 2.2:
+b - color changing on players head also changed the status bar text color
+    - ON_COLOR macro in text.h was reading from palette 32 which was being changed
+b - color changes once, then does not change again
+    - moved color update code inside of the while (--ticks) loop
