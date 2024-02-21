@@ -1,0 +1,18 @@
+CHECKPOINT 2.1:
+b - status bar displaying top corner of maze instead of black screen
+    - change target img value to accurately point to status bar location
+b - text fills up entire status bar
+    - set status bar height to 18
+b - text displaying out of plane order, making the characters illegible
+    - in show status bar, was incorrectly calculating p_off. Correct
+      implementation has a constant p_off of 3 indicating that the buf
+      is already filled out in modex order
+b - masking funcs overwriting player image with black screen
+    - in mazegame, was drawing and saving in the wrong order, leading
+      to the black screen overwriting the mask and background image
+b - overwriting player with black instead of the player block
+    - drawing based on !player_mask instead of on player mask
+b - player not masked at the beginning of the game, then the mask
+    applies when the player starts moving
+    - was not applying the player mask outside of the event loop,
+      leading to no mask until the game is running

@@ -541,7 +541,7 @@ void show_status_bar( char* string ) {
     int i;                  /* loop index over video planes        */
 
     for( i = 0; i < BUF_SIZE; i++ )
-          buffer[i] = ON_COLOR;
+          buffer[i] = OFF_COLOR;
 
     text_to_graphics_routine( string, buffer );
 
