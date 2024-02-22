@@ -535,7 +535,7 @@ void show_screen() {
  */
 void show_status_bar( char* string ) {
 
-    char buffer[BUF_SIZE];    /* source address for copy             */
+    unsigned char buffer[BUF_SIZE];    /* source address for copy             */
 
     int p_off;              /* plane offset of first display plane */
     int i;                  /* loop index over video planes        */
@@ -706,7 +706,7 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
             /* save value from screen into buffer */
             *buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE);
             /* check if the player mask indicates player should be drawn, if so draw */
-            if( *mask == 1)
+            if( *mask == 1 )
             {
                 *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
             }
@@ -716,6 +716,93 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
         blk += x_left;
         mask += x_left;
         buf += x_left;
+    }
+
+    return;
+}
+
+/*
+ * draw_fruit_text
+ *   DESCRIPTION: 
+ *   INPUTS: 
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: 
+ */
+void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string ){
+
+    /* update pos_x based on str length for symmetrical text */
+    /* all possible input strings are odd length */
+    unsigned int clen = strlen( string );
+    int x_off = clen / 2;
+
+    /* shift posx by the number of characters to draw on either side * font width */
+    pos_x -= x_off * FONT_WIDTH;
+
+    /* set to draw above the player */
+    pos_y -= 12;
+    fruit_text_to_graphics_routine( string, buf );
+
+    int dx, dy;          /* loop indices for x and y traversal of block */
+    int x_left, x_right; /* clipping limits in horizontal dimension     */
+    int y_top, y_bottom; /* clipping limits in vertical dimension       */
+
+    /* If block is completely off-screen, we do nothing. */
+    if (pos_x + FONT_WIDTH <= show_x || pos_x >= show_x + SCROLL_X_DIM ||
+        pos_y + FONT_HEIGHT <= show_y || pos_y >= show_y + SCROLL_Y_DIM)
+        return;
+
+    /* Clip any pixels falling off the left side of screen. */
+    if ((x_left = show_x - pos_x) < 0)
+        x_left = 0;
+    /* Clip any pixels falling off the right side of screen. */
+    if ((x_right = show_x + SCROLL_X_DIM - pos_x) > FONT_WIDTH)
+        x_right = FONT_WIDTH;
+    /* Skip the first x_left pixels in both screen position and block data. */
+    pos_x += x_left;
+    buf += x_left;
+
+    /*
+     * Adjust x_right to hold the number of pixels to be drawn, and x_left
+     * to hold the amount to skip between rows in the block, which is the
+     * sum of the original left clip and (BLOCK_X_DIM - the original right
+     * clip).
+     */
+    x_right -= x_left;
+    x_left = FONT_WIDTH - x_right;
+
+    /* Clip any pixels falling off the top of the screen. */
+    if ((y_top = show_y - pos_y) < 0)
+        y_top = 0;
+    /* Clip any pixels falling off the bottom of the screen. */
+    if ((y_bottom = show_y + SCROLL_Y_DIM - pos_y) > FONT_HEIGHT)
+        y_bottom = FONT_HEIGHT;
+    /*
+     * Skip the first y_left pixel in screen position and the first
+     * y_left rows of pixels in the block data.
+     */
+    pos_y += y_top;
+    buf += y_top * FONT_WIDTH;
+    /* Adjust y_bottom to hold the number of pixel rows to be drawn. */
+    y_bottom -= y_top;
+
+    int curr_char;
+    int beg_pos_y = pos_y;
+
+    for( curr_char = 0; curr_char < clen; curr_char++ )
+    {
+        for (dy = 0; dy < y_bottom; dy++, pos_y++) {
+            for (dx = 0; dx < x_right; dx++, pos_x++, buf++)
+            {
+                if ( *buf == ON_COLOR )
+                    *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *buf;
+            }
+            /* increment variables */
+            pos_x -= x_right;
+            buf += x_left;
+        }
+        pos_x += FONT_WIDTH;
+        pos_y = beg_pos_y;
     }
 
     return;

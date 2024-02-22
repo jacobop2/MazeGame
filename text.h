@@ -60,7 +60,9 @@
 
 /* translate an input string into graphical display 
    and store in input buffer */
-void text_to_graphics_routine( char* string, char* buffer );
+void text_to_graphics_routine( char* string, unsigned char* buffer );
+
+void fruit_text_to_graphics_routine( char* string, unsigned char* buffer );
 
 /* Standard VGA text font. */
 extern unsigned char font_data[256][16];

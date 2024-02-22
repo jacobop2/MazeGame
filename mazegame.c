@@ -663,7 +663,7 @@ static void setup_show_status_bar()
 int main() {
     int ret;
     struct termios tio_new;
-    unsigned long update_rate = 244; /* in Hz */
+    unsigned long update_rate = 64; /* in Hz */
 
     pthread_t tid1;
     pthread_t tid2;

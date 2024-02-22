@@ -42,12 +42,12 @@
  * text_to_graphics_routine
  *   DESCRIPTION: Translate a string input into graphical format in the status bar buffer
  *   INPUTS: char* string -> string to be translated
- *           char* buffer -> buffer filled with graphical representation of string
+ *           unsigned char* buffer -> buffer filled with graphical representation of string
  *   OUTPUTS: none
  *   RETURN VALUE: none
  *   SIDE EFFECTS: fills buffer with the graphical representation of string
  */
-void text_to_graphics_routine( char* string, char* buffer )
+void text_to_graphics_routine( char* string, unsigned char* buffer )
 {
     // Retrieve input length
     unsigned int clen = strlen( string );
@@ -88,6 +88,45 @@ void text_to_graphics_routine( char* string, char* buffer )
                 {
                     buffer[PX_PLANE_ROW + plane_pos * PLANE_SIZE + i * 2 + j * PX_PLANE_ROW + offset] = OFF_COLOR;                
                 }
+            }
+        }
+    }
+}
+
+/*
+ * fruit_text_to_graphics_routine
+ *   DESCRIPTION: Translate a string input into graphical format in the status bar buffer
+ *   INPUTS: char* string -> string to be translated
+ *           unsigned char* buffer -> buffer filled with graphical representation of string
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: fills buffer with the graphical representation of string
+ */
+void fruit_text_to_graphics_routine( char* string, unsigned char* buffer )
+{
+    // Retrieve input length
+    unsigned int clen = strlen( string );
+
+    int i;
+    for( i = 0; i < BUF_SIZE; i++ )
+        buffer[i] = OFF_COLOR;
+
+    int j, k;
+    // iterate through every input character
+    for ( i = 0; i < clen; i++ )
+    {
+        unsigned char c = string[i];
+        // iterate through every char line
+        for ( j = 0; j < FONT_HEIGHT; j++ )
+        {
+            // iterate through each bit of result
+            for ( k = 0; k < FONT_WIDTH; k++ )
+            {
+                unsigned char mask = 1 << ( FONT_WIDTH - 1 - k );
+                if ( ( mask & font_data[c][j] ) != 0 )
+                    buffer[j * FONT_WIDTH + i * FONT_WIDTH * FONT_HEIGHT + k] = ON_COLOR;
+                //else 
+                    //buffer[j * clen * FONT_WIDTH + i * FONT_WIDTH + k] = 0x00;             
             }
         }
     }
