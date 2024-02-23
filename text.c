@@ -95,7 +95,7 @@ void text_to_graphics_routine( char* string, unsigned char* buffer )
 
 /*
  * fruit_text_to_graphics_routine
- *   DESCRIPTION: Translate a string input into graphical format in the status bar buffer
+ *   DESCRIPTION: Translate a string input into graphical format in the status bar buffer in non modex
  *   INPUTS: char* string -> string to be translated
  *           unsigned char* buffer -> buffer filled with graphical representation of string
  *   OUTPUTS: none
@@ -124,9 +124,7 @@ void fruit_text_to_graphics_routine( char* string, unsigned char* buffer )
             {
                 unsigned char mask = 1 << ( FONT_WIDTH - 1 - k );
                 if ( ( mask & font_data[c][j] ) != 0 )
-                    buffer[j * FONT_WIDTH + i * FONT_WIDTH * FONT_HEIGHT + k] = ON_COLOR;
-                //else 
-                    //buffer[j * clen * FONT_WIDTH + i * FONT_WIDTH + k] = 0x00;             
+                    buffer[i * FONT_WIDTH + j * clen * FONT_WIDTH + k] = ON_COLOR;            
             }
         }
     }

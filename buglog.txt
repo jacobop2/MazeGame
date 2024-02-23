@@ -22,3 +22,7 @@ b - color changing on players head also changed the status bar text color
     - ON_COLOR macro in text.h was reading from palette 32 which was being changed
 b - color changes once, then does not change again
     - moved color update code inside of the while (--ticks) loop
+b - when getting fruit, only one character appears
+    - add third level to drawing loop to account for extra characters
+b - masking incorrectly, background is disturbed
+    - save background in string length block, then redraw all at once instead of in a for loop

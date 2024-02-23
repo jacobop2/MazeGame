@@ -409,8 +409,7 @@ int make_maze(int x_dim, int y_dim, int start_fruits) {
     /* Put the required number of fruits in the maze. */
     n_fruits = 0;
 
-    start_fruits = 20;
-
+    start_fruits = 3;
 
     for (i = 0; i < start_fruits; i++)
         add_a_fruit_internal();
@@ -644,39 +643,6 @@ int check_for_fruit(int x, int y) {
 
         /* Redraw the space with no fruit. */
         draw_full_block (x * BLOCK_X_DIM, y * BLOCK_Y_DIM, find_block(x, y));
-
-        char string[40];
-
-        switch ( fnum )
-        {
-            case 1: // apple
-                sprintf( string, "%s", "an apple!" );
-                break;
-            case 2: // grapes
-                sprintf( string, "%s", "grapes!" );
-                break;
-            case 3: // peach
-                sprintf( string, "%s", "a peach!" );
-                break;
-            case 4: // strawberry
-                sprintf( string, "%s", "a strawberry!" );
-                break;
-            case 5: // banana
-                sprintf( string, "%s", "a banana!" );
-                break;
-            case 6: // watermelon
-                sprintf( string, "%s", "watermelon!" );
-                break;
-            case 7: // dew
-                sprintf( string, "%s", "YEAH! DEW!" );
-                break;
-            default:
-                sprintf( string, "%s", "Fruit" );
-        }
-
-        /* Draw text above the player */
-        unsigned char buffer[BUF_SIZE];
-        draw_fruit_text( x * BLOCK_X_DIM, y * BLOCK_Y_DIM, buffer, string );
     }
 
     /* Return the fruit number found. */

@@ -62,6 +62,8 @@
    and store in input buffer */
 void text_to_graphics_routine( char* string, unsigned char* buffer );
 
+/* translate an input string into graphical display 
+   and store in input buffer in non modex format */
 void fruit_text_to_graphics_routine( char* string, unsigned char* buffer );
 
 /* Standard VGA text font. */

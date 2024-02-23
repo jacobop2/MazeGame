@@ -56,6 +56,9 @@
 #define SCROLL_Y_DIM    IMAGE_Y_DIM                /* full image width      */
 #define SCROLL_X_WIDTH  (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 
+/* defines height above player to draw fruit text */
+#define FRUIT_TEXT_DRAW_HEIGHT 24
+
 /*
  * NOTES
  *
@@ -134,13 +137,15 @@ extern void clear_screens();
  */
 extern void draw_full_block(int pos_x, int pos_y, unsigned char* blk);
 
+void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length);
+
 /*
  * save a 12x12 block with upper left corner at logical position
  * (pos_x,pos_y). Draw the player on the screen using the player mask
  */
 extern void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf);
 
-void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string );
+void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf );
 
 void set_palette_color( char index, char red, char green, char blue );
 

@@ -53,6 +53,8 @@
 #include <termios.h>
 #include <pthread.h>
 
+#include <string.h>
+
 #define BACKQUOTE 96
 #define UP        65
 #define DOWN      66
@@ -487,9 +489,36 @@ static void *rtc_thread(void *arg) {
         /* Declare a counter to check tick decrements */
         int counter = 0;
 
+        /* initialize fruit timer */
+        int time_start_fruit = -1;
+        int fnum_timer = 0;
+        int fnum;
+
+        /* initialize buffer for text, and buffer to save bg colors */
+        unsigned char buffer[BUF_SIZE];
+        unsigned char save_buffer[BUF_SIZE];
+
         while ((quit_flag == 0) && (goto_next_level == 0)) {
 
             setup_show_status_bar();
+
+            /* check if a fruit is found on the current tile */
+            if ( ( fnum = check_for_fruit( play_x / BLOCK_X_DIM, play_y / BLOCK_Y_DIM ) ) != 0 )
+            {
+                /* if fruit found, set timer, save fnum */
+                time_start_fruit = time(NULL);
+                fnum_timer = fnum;
+            }
+
+            /* check current time, if enough time has elapsed, reset fnum */
+            int time_curr_fruit = time(NULL);
+            if ( -1 != time_start_fruit && ( time_curr_fruit - time_start_fruit > 3 ) )
+            {
+                fnum_timer = 0;
+                time_start_fruit = -1;
+            }
+
+            char string[40];
 
             // Wait for Periodic Interrupt
             ret = read(fd, &data, sizeof(unsigned long));
@@ -601,9 +630,59 @@ static void *rtc_thread(void *arg) {
             }
             if (1)
             {
+
+                /* if still within timer range, trigger text */
+                if ( fnum_timer != 0 )
+                {
+                    switch ( fnum_timer )
+                    {
+                        case 1: // apple
+                            sprintf( string, "%s", "an apple!" );
+                            break;
+                        case 2: // grapes
+                            sprintf( string, "%s", "grapes!" );
+                            break;
+                        case 3: // peach
+                            sprintf( string, "%s", "a peach!" );
+                            break;
+                        case 4: // strawberry
+                            sprintf( string, "%s", "a strawberry!" );
+                            break;
+                        case 5: // banana
+                            sprintf( string, "%s", "a banana!" );
+                            break;
+                        case 6: // watermelon
+                            sprintf( string, "%s", "watermelon!" );
+                            break;
+                        case 7: // dew
+                            sprintf( string, "%s", "YEAH! DEW!" );
+                            break;
+                        default:
+                            sprintf( string, "%s", "Fruit" );
+                    }
+
+                    /* Draw text above the player */
+                    draw_fruit_text( play_x, play_y, buffer, string, save_buffer );
+                }
+
                 save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
                 show_screen();  
-                draw_full_block(play_x, play_y, back_buf);    
+                draw_full_block(play_x, play_y, back_buf);   
+
+                if ( fnum_timer != 0 )
+                {
+                    /* Restore background */
+                    unsigned int length = strlen( string );
+                    int mid = length / 2;
+
+                    /* start play_x at the proper index */
+                    int temp = play_x;
+                    temp -= mid * FONT_WIDTH;
+
+                    /* draw each block saved in save_buffer */
+                    draw_char_block( temp, play_y, save_buffer, length );
+                }
+
                 setup_show_status_bar();
             }  
             need_redraw = 0;
