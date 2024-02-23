@@ -26,3 +26,5 @@ b - when getting fruit, only one character appears
     - add third level to drawing loop to account for extra characters
 b - masking incorrectly, background is disturbed
     - save background in string length block, then redraw all at once instead of in a for loop
+b - fruit text chops off on the right side short of the wall
+    - was using SCROLL_X_DIM = 320 as border, when it could be greater due to screen shifting

@@ -662,6 +662,7 @@ static void *rtc_thread(void *arg) {
                     }
 
                     /* Draw text above the player */
+                    //draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 1, 0 );
                     draw_fruit_text( play_x, play_y, buffer, string, save_buffer );
                 }
 
@@ -673,14 +674,10 @@ static void *rtc_thread(void *arg) {
                 {
                     /* Restore background */
                     unsigned int length = strlen( string );
-                    int mid = length / 2;
-
-                    /* start play_x at the proper index */
-                    int temp = play_x;
-                    temp -= mid * FONT_WIDTH;
 
                     /* draw each block saved in save_buffer */
-                    draw_char_block( temp, play_y, save_buffer, length );
+                    draw_char_block( play_x, play_y, save_buffer, length );
+                    //draw_fruit_text( play_x, play_y, save_buffer, "test", 0, 0, length );
                 }
 
                 setup_show_status_bar();

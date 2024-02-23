@@ -409,7 +409,7 @@ int make_maze(int x_dim, int y_dim, int start_fruits) {
     /* Put the required number of fruits in the maze. */
     n_fruits = 0;
 
-    start_fruits = 3;
+    start_fruits = 10;
 
     for (i = 0; i < start_fruits; i++)
         add_a_fruit_internal();
