@@ -680,15 +680,12 @@ void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length) {
     blk += x_left;
 
     /* shift posx by the number of characters to draw on either side * font width */
-    pos_x -= x_off * FONT_WIDTH;
+    pos_x -= x_off * FONT_WIDTH - BLOCK_X_DIM / 2;
 
     /* side bounds checks */
     /* trim the string if it extends past right boundary */
     int right_trimmed_len = ( SCROLL_X_DIM + show_x < pos_x + length * FONT_WIDTH ) ? SCROLL_X_DIM + show_x - pos_x : length * FONT_WIDTH;
     int right_trimmed_len_dif = length * FONT_WIDTH - right_trimmed_len;
-
-    /* if pos_x is too far left, shift text */
-    int left_trimmed_len = ( pos_x < 0 ) ? -1 * pos_x : 0;
 
     /* If block is completely off-screen, we do nothing. */
     // if (pos_x + FONT_WIDTH <= show_x || pos_x >= show_x + SCROLL_X_DIM ||
@@ -728,7 +725,7 @@ void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length) {
         for ( dx = 0; dx < right_trimmed_len; dx++, pos_x++, blk++ )  
         {
             /* skip drawing any pixels off the left screen */
-            if( pos_x < 6 ) continue;
+            if( pos_x < BLOCK_X_DIM / 2 ) continue;
 
             /* restore bg saved in blk */
             *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH + (3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
@@ -855,7 +852,7 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
         return;
 
     /* shift posx by the number of characters to draw on either side * font width */
-    pos_x -= x_off * FONT_WIDTH;
+    pos_x -= x_off * FONT_WIDTH - BLOCK_X_DIM / 2;
 
     /* adjust for drawing location */
     pos_y -= FRUIT_TEXT_DRAW_HEIGHT;
@@ -870,9 +867,6 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
     /* trim the string if it extends past right boundary */
     int right_trimmed_len = ( SCROLL_X_DIM + show_x < pos_x + clen * FONT_WIDTH ) ? SCROLL_X_DIM + show_x - pos_x : clen * FONT_WIDTH;
     int right_trimmed_len_dif = clen * FONT_WIDTH - right_trimmed_len;
-
-    /* if pos_x is too far left, shift text */
-    int left_trimmed_len = ( pos_x < 0 ) ? -1 * pos_x : 0;
 
     /* translate the string to graphical representation */
     fruit_text_to_graphics_routine( string, buf );
@@ -909,14 +903,16 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
         for ( dx = 0; dx < right_trimmed_len; dx++, pos_x++, buf++, save_buf++ )  
         {
             /* skip drawing any pixels off the left screen */
-            if( pos_x < 6 ) continue;
+            if( pos_x < BLOCK_X_DIM / 2 ) continue;
 
             /* save background for later masking */
             *save_buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE); 
 
             /* draw buffer to screen */
             if( *buf == ON_COLOR )
+            {
                 *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *buf;
+            }
         }
         /* if the string is trimmed, ensure buffers incremented correctly */
         save_buf += x_left + right_trimmed_len_dif;
