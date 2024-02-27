@@ -897,6 +897,8 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
 
     int beg_pos_x = pos_x;
 
+    unsigned char palette_idx;
+
     /* loop through translated block */
     for ( dy = 0; dy < y_bottom; dy++, pos_y++ ) 
     {
@@ -907,11 +909,12 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
 
             /* save background for later masking */
             *save_buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE); 
+            palette_idx = *save_buf;
 
             /* draw buffer to screen */
             if( *buf == ON_COLOR )
             {
-                *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *buf;
+                *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = palette_idx + PALETTE_SIZE;
             }
         }
         /* if the string is trimmed, ensure buffers incremented correctly */
@@ -938,12 +941,11 @@ void set_palette_color( char index, char red, char green, char blue )
 
     OUTB( 0x03C8, index );
 
-    /* Write input oclors into palette */
+    /* Write input colors into palette */
     OUTB( 0x03C9, red );
-    OUTB( 0x03C9, blue );
     OUTB( 0x03C9, green );
+    OUTB( 0x03C9, blue );
 }
-
 
 /*
  * The functions inside the preprocessor block below rely on functions
@@ -1251,6 +1253,48 @@ static void fill_palette() {
 
     /* Write all 64 colors from array. */
     REP_OUTSB(0x03C9, palette_RGB, 64 * 3);
+
+    int pal, color;
+    static unsigned char palette_transparent[PALETTE_SIZE][3];
+    
+    for( pal = 0; pal < PALETTE_SIZE; pal++ )
+    {
+        for( color = 0; color < 3; color++ )
+        {
+            /* write each color to the palette */
+            palette_transparent[pal][color] = ( palette_RGB[pal][color] + 0x3F ) / 2 ;
+        }
+    }
+
+    /* set write location to start of transparent palettes + idx */
+    OUTB( 0x03C8, PALETTE_SIZE );
+
+    /* Write all 64 colors from array. */
+    REP_OUTSB(0x03C9, palette_transparent, 64 * 3);
+}
+
+void update_palette( unsigned char * palette )
+{
+    int pal, color;
+    unsigned char curr_color;
+    
+    for( pal = 0; pal < USER_PALETTE_SIZE; pal++ )
+    {
+        /* set write location to start of transparent palettes + idx */
+        OUTB( 0x03C8, START_USER_PALETTE + PALETTE_SIZE + pal );
+
+        for( color = 0; color < 3; color++ )
+        {
+            curr_color = palette[pal * 3 + color];
+
+            /* if the curr color should not be updated, skip */
+            if( curr_color == 0xFF ) continue;
+
+            /* write each color to the palette */
+            OUTB( 0x03C9, ( palette[pal * 3 + color] + 0x3F ) / 2 );
+        }
+    }
+    return;
 }
 
 /*

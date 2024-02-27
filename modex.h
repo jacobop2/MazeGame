@@ -57,7 +57,10 @@
 #define SCROLL_X_WIDTH  (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 
 /* defines height above player to draw fruit text */
-#define FRUIT_TEXT_DRAW_HEIGHT 24
+#define FRUIT_TEXT_DRAW_HEIGHT 2 * BLOCK_Y_DIM
+
+/* define the palette location which will hold transparent colors */
+#define TRANSPARENT_PALETTE 0x2F
 
 /*
  * NOTES
@@ -157,5 +160,8 @@ extern int draw_horiz_line(int y);
 
 /* draw a vertical line at horizontal pixel x within the logical view window */
 extern int draw_vert_line(int x);
+
+/* update palette with new level colors and add transparent palettes */
+void update_palette( unsigned char * palette );
 
 #endif /* MODEX_H */

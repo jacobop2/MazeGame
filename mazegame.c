@@ -416,6 +416,16 @@ static void *rtc_thread(void *arg) {
         char g = 0x3F;
         char b = 0x3F;
 
+        /* store updated palette information for refresh by level */
+        unsigned char palette_buf[USER_PALETTE_SIZE * 3];
+
+        int i;
+        /* initialize palettes to signal that they do not need update */
+        for( i = 0; i < USER_PALETTE_SIZE * 3; i++ )
+        {
+            palette_buf[i] = 0xFF;
+        }
+
         /* set colors for walls and status bar based on level */
         switch ( level % 6 )
         {
@@ -451,6 +461,13 @@ static void *rtc_thread(void *arg) {
                 break;
         }
         set_palette_color( 0x22, r2, g2, b2 );
+
+        /* signal that wall palette has been updated, provide values */
+        palette_buf[WALL_PALETTE_INDEX * 3] = r2;
+        palette_buf[WALL_PALETTE_INDEX * 3 + 1] = g2;
+        palette_buf[WALL_PALETTE_INDEX * 3 + 2] = b2;
+
+        update_palette( palette_buf );
 
         // Prepare for the level.  If we fail, just let the player win.
         if (prepare_maze_level(level) != 0)
@@ -518,7 +535,7 @@ static void *rtc_thread(void *arg) {
                 time_start_fruit = -1;
             }
 
-            char string[40];
+            char string[MAX_STRING_LENGTH];
 
             // Wait for Periodic Interrupt
             ret = read(fd, &data, sizeof(unsigned long));

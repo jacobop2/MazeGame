@@ -58,6 +58,14 @@
 #define ON_COLOR 0x0F
 #define OFF_COLOR 34
 
+#define MAX_STRING_LENGTH 40
+
+#define PALETTE_SIZE 64
+#define USER_PALETTE_SIZE 16
+#define START_USER_PALETTE 0x20
+
+#define WALL_PALETTE_INDEX 2
+
 /* translate an input string into graphical display 
    and store in input buffer */
 void text_to_graphics_routine( char* string, unsigned char* buffer );
