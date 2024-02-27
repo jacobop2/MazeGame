@@ -150,7 +150,7 @@ void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length);
 extern void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf);
 
 /* draw a length * 8 block of text above the player */
-void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf );
+void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf, int mode );
 
 /* set a palette color */
 void set_palette_color( char index, char red, char green, char blue );

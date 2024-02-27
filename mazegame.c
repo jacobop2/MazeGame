@@ -558,7 +558,11 @@ static void *rtc_thread(void *arg) {
                 goodcount++;
             }
 
+            int draw_ft;
+
             while (ticks--) {
+
+                draw_ft = 0;
 
                 // Lock the mutex
                 pthread_mutex_lock(&mtx);
@@ -683,10 +687,17 @@ static void *rtc_thread(void *arg) {
 
                     /* Draw text above the player */
                     //draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 1, 0 );
-                    draw_fruit_text( play_x, play_y, buffer, string, save_buffer );
+                    draw_ft = 1;
                 }
 
+                if ( draw_ft == 1 )
+                    draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 0 );
+
                 save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
+                
+                if ( draw_ft == 1 )
+                    draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 1 );
+
                 show_screen();  
                 draw_full_block(play_x, play_y, back_buf);   
 

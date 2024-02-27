@@ -666,7 +666,7 @@ void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length) {
     /* upper bound check */
     if( pos_y < BLOCK_Y_DIM )
     {
-        pos_y += 2 * FRUIT_TEXT_DRAW_HEIGHT;
+        pos_y = BLOCK_Y_DIM / 2;
     }
 
     /* Clip any pixels falling off the left side of screen. */
@@ -822,11 +822,12 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
  *           unsigned char * buf -- used to obtain graphical text, then drawn to screen
  *           char * string -- string to translate
  *           unsigned char * save_buf -- buf to hold saved background
+ *           int mode -- 0 to save block, 1 to draw
  *   OUTPUTS: none
  *   RETURN VALUE: none
  *   SIDE EFFECTS: draws the fruit text to the screen
  */
-void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf ){
+void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf, int mode ){
 
     int dx, dy;          /* loop indices for x and y traversal of block */
     int x_left, x_right; /* clipping limits in horizontal dimension     */
@@ -860,7 +861,7 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
     /* upper bound check */
     if( pos_y < BLOCK_Y_DIM )
     {
-        pos_y += 2 * FRUIT_TEXT_DRAW_HEIGHT;
+        pos_y = BLOCK_Y_DIM / 2;
     }
 
     /* side bounds checks */
@@ -907,15 +908,18 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
             /* skip drawing any pixels off the left screen */
             if( pos_x < BLOCK_X_DIM / 2 ) continue;
 
+            if( mode == 0 )
             /* save background for later masking */
-            *save_buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE); 
+                *save_buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE); 
+
             palette_idx = *save_buf;
 
             /* draw buffer to screen */
             if( *buf == ON_COLOR )
             {
-                /* offset by palette_size to access transparent colors */
-                *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = palette_idx + PALETTE_SIZE;
+                if( mode == 1 )
+                    /* offset by palette_size to access transparent colors */
+                    *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = palette_idx + PALETTE_SIZE;
             }
         }
         /* if the string is trimmed, ensure buffers incremented correctly */
@@ -1263,7 +1267,7 @@ static void fill_palette() {
         for( color = 0; color < 3; color++ )
         {
             /* write each color to the palette */
-            palette_transparent[pal][color] = ( palette_RGB[pal][color] + 0x3F ) / 2 ;
+            palette_transparent[pal][color] = ( palette_RGB[pal][color] + 0x3F ) / 2;
         }
     }
 
