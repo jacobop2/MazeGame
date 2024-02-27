@@ -467,6 +467,7 @@ static void *rtc_thread(void *arg) {
         palette_buf[WALL_PALETTE_INDEX * 3 + 1] = g2;
         palette_buf[WALL_PALETTE_INDEX * 3 + 2] = b2;
 
+        /* update the palettes to reflect change in wall color */
         update_palette( palette_buf );
 
         // Prepare for the level.  If we fail, just let the player win.
@@ -563,13 +564,16 @@ static void *rtc_thread(void *arg) {
                 pthread_mutex_lock(&mtx);
 
                 counter++;
+                /* update every 3 iterations */
                 if ( counter % 3 == 0 )
                 {
+                    /* loop colors, mod with 64 so they stay in bounds */
                     r = ( r + 3 ) % 0x40;
                     g = ( g + 2 ) % 0x40;
                     b = ( b + 1 ) % 0x40;
                 }
 
+                /* set the player palette to the player color */
                 set_palette_color( 0x20, r, g, b );
 
                 // Check to see if a key has been pressed
@@ -647,7 +651,6 @@ static void *rtc_thread(void *arg) {
             }
             if (1)
             {
-
                 /* if still within timer range, trigger text */
                 if ( fnum_timer != 0 )
                 {

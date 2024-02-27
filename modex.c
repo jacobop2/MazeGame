@@ -914,6 +914,7 @@ void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, 
             /* draw buffer to screen */
             if( *buf == ON_COLOR )
             {
+                /* offset by palette_size to access transparent colors */
                 *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = palette_idx + PALETTE_SIZE;
             }
         }
@@ -1273,6 +1274,14 @@ static void fill_palette() {
     REP_OUTSB(0x03C9, palette_transparent, 64 * 3);
 }
 
+/*
+ * update_palette
+ *   DESCRIPTION: Update the user palettes in video memory
+ *   INPUTS: unsigned char * palette -- pointer to array of user palette colors
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: updates user palette values
+ */
 void update_palette( unsigned char * palette )
 {
     int pal, color;
@@ -1288,6 +1297,7 @@ void update_palette( unsigned char * palette )
             curr_color = palette[pal * 3 + color];
 
             /* if the curr color should not be updated, skip */
+            /* all empty spots are set to 0xFF in mazegame */
             if( curr_color == 0xFF ) continue;
 
             /* write each color to the palette */

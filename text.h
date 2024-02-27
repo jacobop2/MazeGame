@@ -56,14 +56,21 @@
 
 /* set ON_COLOR to white and off color to palette 0x23 which will be updated */
 #define ON_COLOR 0x0F
+
+/* decimal 34 = 0x22 = wall palette */
 #define OFF_COLOR 34
 
+/* max number of characters on screen */
 #define MAX_STRING_LENGTH 40
 
+/* predefined palette size */
 #define PALETTE_SIZE 64
+
+/* number of registers allocated to user */
 #define USER_PALETTE_SIZE 16
 #define START_USER_PALETTE 0x20
 
+/* wall color is second palette in user palettes */
 #define WALL_PALETTE_INDEX 2
 
 /* translate an input string into graphical display 

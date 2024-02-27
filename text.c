@@ -123,6 +123,8 @@ void fruit_text_to_graphics_routine( char* string, unsigned char* buffer )
             for ( k = 0; k < FONT_WIDTH; k++ )
             {
                 unsigned char mask = 1 << ( FONT_WIDTH - 1 - k );
+
+                /* store in standard row major order */
                 if ( ( mask & font_data[c][j] ) != 0 )
                     buffer[i * FONT_WIDTH + j * clen * FONT_WIDTH + k] = ON_COLOR;            
             }
