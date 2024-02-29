@@ -54,7 +54,7 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
 
 		/* acknowledge */
 		case MTCP_ACK:
-			ACK = 1;
+			ACK = CONTROLLER_FREE;
 			break;
 
 		// /* respond to button input */
@@ -82,8 +82,8 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
 			new_buttons |= ( right << 7 );
 			new_buttons |= ( up << 4 );
 
-			/* set active low */
-			button_state = ~new_buttons;
+			/* set active high */
+			button_state = new_buttons;
 			break;
 		}
 	}
@@ -145,7 +145,7 @@ int tux_init( struct tty_struct* tty )
 	buf[0] = MTCP_BIOC_ON;
 	buf[1] = MTCP_LED_USR;
 	tuxctl_ldisc_put( tty, buf, 6 );
-	ACK = 0;
+	ACK = CONTROLLER_FREE;
 
 	printk("hello");
 	return 0;
@@ -153,7 +153,7 @@ int tux_init( struct tty_struct* tty )
 
 int tux_buttons( struct tty_struct* tty, unsigned long arg )
 {
-	//copy_to_user( ())
+	copy_to_user( ( void * )arg, ( void * )&button_state, 1 );
 	return 0;
 }
 
@@ -199,9 +199,9 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 	}
 
 	/* ensure that tux is ready, if so send packet */
-	if ( ACK == 1 )
+	if ( ACK == CONTROLLER_FREE )
 	{
-		ACK = 0;
+		ACK = CONTROLLER_BUSY;
 		tuxctl_ldisc_put( tty, led_state, LED_STATE_SIZE );
 	}
 

@@ -14,6 +14,9 @@
 #define LED_STATE_SIZE 6
 #define NUM_DIGITS 4
 
+#define CONTROLLER_BUSY 0
+#define CONTROLLER_FREE 1
+
 unsigned char led_state[LED_STATE_SIZE];
 char button_state;
 

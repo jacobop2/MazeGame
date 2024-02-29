@@ -61,6 +61,10 @@
 #define RIGHT     67
 #define LEFT      68
 
+#define TUX_BUTTONS _IOW('E', 0x12, unsigned long*)
+#define TUX_INIT _IO('E', 0x13)
+#define TUX_SET_LED _IOR('E', 0x10, unsigned long)
+
 /*
  * If NDEBUG is not defined, we execute sanity checks to make sure that
  * changes to enumerations, bit maps, etc., have been made consistently.
@@ -104,6 +108,9 @@ static void move_right(int* xpos);
 static void move_down(int* ypos);
 static void move_left(int* xpos);
 static int unveil_around_player(int play_x, int play_y);
+
+static void *tux_thread( void *arg );
+
 static void *rtc_thread(void *arg);
 static void *keyboard_thread(void *arg);
 
@@ -322,9 +329,16 @@ int next_dir = UP;
 int play_x, play_y, last_dir, dir;
 int move_cnt = 0;
 int fd;
+int fd_tux;
 unsigned long data;
 static struct termios tio_orig;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+
+static pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+
+int tux_input = 0;
+
+char global_buttons = 0;
 
 /*
  * keyboard_thread
@@ -380,6 +394,47 @@ static void *keyboard_thread(void *arg) {
     }
 
     return 0;
+}
+
+static void *tux_thread( void* arg )
+{
+    while ( 1 )
+    {
+        ioctl( fd_tux, TUX_SET_LED, 0x000F0001 );
+    }
+    // /* loop until win detected */
+    // while ( winner == 0 )
+    // {
+    //     if ( quit_flag == 1 )
+    //         break;
+
+    //     pthread_mutex_lock( &mtx );
+
+    //     /* while the buttons have not been pressed */
+    //     while ( tux_input == 0 )
+    //     {
+    //         pthread_cond_wait( &cv, &mtx );
+    //     }
+
+    //     /* shift because we only care about the movement dirs */
+    //     global_buttons = global_buttons >> 4;
+
+    //     /* UP */
+    //     if ( ( global_buttons & 0x01 ) == 1 )
+    //         next_dir = DIR_UP;
+    //     /* DOWN */
+    //     else if ( ( global_buttons & 0x02 ) == 1 )
+    //         next_dir = DIR_DOWN;
+    //     /* LEFT */
+    //     else if ( ( global_buttons & 0x04 ) == 1 )
+    //         next_dir = DIR_LEFT;
+    //     /* RIGHT */
+    //     else if ( ( global_buttons & 0x08 ) == 1 )
+    //         next_dir = DIR_RIGHT;
+
+    //     pthread_mutex_unlock( &mtx );
+    // }
+    // return NULL;
 }
 
 /* some stats about how often we take longer than a single timer tick */
@@ -559,12 +614,32 @@ static void *rtc_thread(void *arg) {
             }
 
             int draw_ft;
+            unsigned long buttons;
 
             while (ticks--) {
 
                 draw_ft = 0;
 
+                /* call ioctl to fetch tux buttons */
+                ioctl( fd, TUX_BUTTONS, &buttons );
+
+                /* clear upper bits of buttons */
+                global_buttons = buttons & 0xFF;
+
+                if ( global_buttons != 0x00 )
+                    tux_input = 1;
+                else
+                    tux_input = 0;
+
                 // Lock the mutex
+                pthread_mutex_lock(&mtx);
+
+                if ( tux_input )
+                    pthread_cond_signal( &cv );
+                    
+                /* unlock to allow thread to continue */
+                pthread_mutex_unlock(&mtx);
+
                 pthread_mutex_lock(&mtx);
 
                 counter++;
@@ -734,6 +809,7 @@ static void setup_show_status_bar()
 {                
     // init vars and fetch fruits
     char s[40];
+    unsigned long digits = 0;
     int n_fruits = 0;
     int time_min = 0;
     int time_sec = 0;
@@ -754,7 +830,17 @@ static void setup_show_status_bar()
     else if ( 0 == n_fruits && game_info.number == 10 )
         sprintf( s, "     Level %d    %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces
     else
-        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces                  
+        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces 
+
+    // digits |= time_sec % 10;
+    // time_sec = time_sec / 10;
+    // digits[1] = time_sec % 10;
+
+    // digits[2] = time_min % 10;
+    // time_min = time_min / 10;
+    // digits[3] = time_min % 10;
+    
+    ioctl( fd_tux, TUX_SET_LED, 0x000F0001 );             
 
     show_status_bar( s );
 }
@@ -774,9 +860,13 @@ int main() {
 
     pthread_t tid1;
     pthread_t tid2;
+    pthread_t tid_tux;
 
     // Initialize RTC
     fd = open("/dev/rtc", O_RDONLY, 0);
+
+    // begin tux init
+    fd_tux = open( "/dev/ttyS0", O_RDWR | O_NOCTTY );
     
     // Enable RTC periodic interrupts at update_rate Hz
     // Default max is 64...must change in /proc/sys/dev/rtc/max-user-freq
@@ -789,6 +879,11 @@ int main() {
         perror("fcntl to make stdin non-blocking");
         return -1;
     }
+
+    /* initialize tux controller */
+    int ldisc_num = N_MOUSE;
+    ioctl( fd, TIOCSETD, &ldisc_num );
+    ioctl( fd, TUX_INIT );
     
     // Save current terminal attributes for stdin.
     if (tcgetattr(fileno(stdin), &tio_orig) != 0) {
@@ -815,10 +910,12 @@ int main() {
     // Create the threads
     pthread_create(&tid1, NULL, rtc_thread, NULL);
     pthread_create(&tid2, NULL, keyboard_thread, NULL);
+    pthread_create( &tid_tux, NULL, tux_thread, NULL );
     
     // Wait for all the threads to end
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
+    pthread_cancel( tid_tux );
 
     // Shutdown Display
     clear_mode_X();
@@ -828,6 +925,7 @@ int main() {
         
     // Close RTC
     close(fd);
+    close(fd_tux);
 
     // Print outcome of the game
     if (winner == 1) {    
