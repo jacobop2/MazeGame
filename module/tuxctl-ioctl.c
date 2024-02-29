@@ -44,7 +44,52 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
     b = packet[1]; /* values when printing them. */
     c = packet[2];
 
-    /*printk("packet : %x %x %x\n", a, b, c); */
+	switch ( a )
+	{
+		/* save state, call init */
+		case MTCP_RESET:
+			( void )tux_init( tty );
+			tuxctl_ldisc_put( tty, led_state, LED_STATE_SIZE );
+			break;
+
+		/* acknowledge */
+		case MTCP_ACK:
+			ACK = 1;
+			break;
+
+		// /* respond to button input */
+		case MTCP_BIOC_EVENT:
+		{
+			/* r l d u c b a start */
+			char new_buttons = 0;
+			char left = 0;
+			char down = 0;
+			char right = 0;
+			char up = 0;
+
+			/* store lower 4 bits in new_buttons */
+			new_buttons |= ( b & 0x0F );
+
+			/* store value of dir bits in var */
+			left = ( c & 0x02 ) >> 1;
+			down = ( c & 0x04 ) >> 2;
+			right = ( c & 0x08 ) >> 3;
+			up = ( c & 0x01 );
+
+			/* manually set bits */
+			new_buttons |= ( down << 5 );
+			new_buttons |= ( left << 6 );
+			new_buttons |= ( right << 7 );
+			new_buttons |= ( up << 4 );
+
+			/* set active low */
+			button_state = ~new_buttons;
+			break;
+		}
+	}
+
+    printk("packet : %x %x %x\n", a, b, c); 
+	printk( "Hex val: %02X\n", (unsigned char)button_state );
 }
 
 /******** IMPORTANT NOTE: READ THIS BEFORE IMPLEMENTING THE IOCTLS ************
@@ -60,19 +105,106 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
  * valid.                                                                     *
  *                                                                            *
  ******************************************************************************/
-int 
-tuxctl_ioctl (struct tty_struct* tty, struct file* file, 
+int tuxctl_ioctl (struct tty_struct* tty, struct file* file, 
 	      unsigned cmd, unsigned long arg)
 {
     switch (cmd) {
+
 	case TUX_INIT:
+		return tux_init( tty );
+
 	case TUX_BUTTONS:
+		if ( arg == 0 )
+			return -EINVAL;
+		return tux_buttons( tty, arg );
+
+	/* update saved state */
 	case TUX_SET_LED:
+		return tux_set_led( tty, arg );
+
 	case TUX_LED_ACK:
+		return -EINVAL;
 	case TUX_LED_REQUEST:
+		return -EINVAL;
 	case TUX_READ_LED:
+		return -EINVAL;
 	default:
 	    return -EINVAL;
     }
+}
+
+// unsigned long mp1 copy to user (void *to, const void *from, unsigned long n);
+
+unsigned char led_data[16] = { 0xE7, 0x06, 0xCB, 0x8F, 0x2E, 0xAD, 0xED, 0x86, 
+							   0xEF, 0xAF, 0xEE, 0x6D, 0xE1, 0x4F, 0xE9, 0xE8 };
+
+int tux_init( struct tty_struct* tty )
+{
+	unsigned char buf[6];
+
+	buf[0] = MTCP_BIOC_ON;
+	buf[1] = MTCP_LED_USR;
+	tuxctl_ldisc_put( tty, buf, 6 );
+	ACK = 0;
+
+	printk("hello");
+	return 0;
+}
+
+int tux_buttons( struct tty_struct* tty, unsigned long arg )
+{
+	//copy_to_user( ())
+	return 0;
+}
+
+int tux_set_led( struct tty_struct* tty, unsigned long arg )
+{
+	/* save the lower 16 bits of arg, fetch graphical representation from */
+	int i;
+	unsigned char digits[NUM_DIGITS];
+	char active_displays;
+	char dps;
+
+	printk( "YOOOOOOOOOOOOO\n" );
+	
+	for ( i = 0; i < 6; i++ )
+	{
+		printk( "%02x \n", led_state[i] );
+	}
+
+	for ( i = 0; i < NUM_DIGITS; i++ )
+	{
+		/* save 4 bits per digit */
+		digits[i] = led_data[arg & 0xF];
+		arg = arg >> 4;
+	}
+	
+	/* save bits 20-17 to determine which leds to turn on */
+	active_displays = arg & 0x0F;
+
+	/* save bits 27-24 to set decimal points */
+	dps = ( arg >> 8 ) & 0x0F;
+
+	led_state[0] = MTCP_LED_SET;
+	led_state[1] = active_displays;
+
+	for ( i = 0; i < NUM_DIGITS; i++ )
+	{
+		/* fill out dp bit of each led */
+		digits[i] |= ( dps & 0x01 ) << 4;
+		dps = dps >> 1;
+
+		/* add to led_state buf */
+		led_state[2 + i] = digits[i];
+	}
+
+	/* ensure that tux is ready, if so send packet */
+	if ( ACK == 1 )
+	{
+		ACK = 0;
+		tuxctl_ldisc_put( tty, led_state, LED_STATE_SIZE );
+	}
+
+	return 0;
 }
 

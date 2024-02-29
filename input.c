@@ -52,11 +52,13 @@
 #include "input.h"
 #include "maze.h"
 
+#include "module/tuxctl-ioctl.h"
+
 /* set to 1 and compile this file by itself to test functionality */
 #define TEST_INPUT_DRIVER  1
 
 /* set to 1 to use tux controller; otherwise, uses keyboard input */
-#define USE_TUX_CONTROLLER 0
+#define USE_TUX_CONTROLLER 1
 
 /* stores original terminal settings */
 static struct termios tio_orig;
@@ -206,11 +208,25 @@ void shutdown_input() {
  */
 void display_time_on_tux(int num_seconds) {
 #if (USE_TUX_CONTROLLER != 0)
-#error "Tux controller code is not operational yet."
+//#error "Tux controller code is not operational yet."
 #endif
 }
 
 #if (TEST_INPUT_DRIVER == 1)
+
+void leds_test( int fd )
+{
+    int enable_led_offset = 0x0F0F0000;
+    int i = 0;
+
+    while(1)
+    {
+        sleep(1);
+        ioctl( fd, TUX_SET_LED, enable_led_offset + i % 100 );
+        i++;
+    }
+}
+
 int main() {
     cmd_t cmd;
     dir_t dir = DIR_UP;
@@ -228,16 +244,30 @@ int main() {
     }
 
     init_input();
+
+    int fd = open( "/dev/ttyS0", O_RDWR | O_NOCTTY );
+    int ldisc_num = N_MOUSE;
+    ioctl( fd, TIOCSETD, &ldisc_num );
+    ioctl( fd, TUX_INIT );
+
+    leds_test( fd );
+
+    //ioctl( fd, TUX_SET_LED, 0x00000000 );
+
     while (1) {
         printf("CURRENT DIRECTION IS %s\n", dir_names[dir]);
+
+        //ioctl( fd, TUX_BUTTONS );
+
         while ((cmd = get_command(dir)) == TURN_NONE);
         if (cmd == CMD_QUIT)
             break;
-        display_time_on_tux(83);
+        //display_time_on_tux(83);
         printf ("%s\n", cmd_name[cmd]);
         dir = (dir + cmd) % 4;
     }
     shutdown_input();
     return 0;
 }
+
 #endif

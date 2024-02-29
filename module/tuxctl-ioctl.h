@@ -10,5 +10,19 @@
 #define TUX_LED_REQUEST _IO('E', 0x14)
 #define TUX_LED_ACK _IO('E', 0x15)
 
+
+#define LED_STATE_SIZE 6
+#define NUM_DIGITS 4
+
+unsigned char led_state[LED_STATE_SIZE];
+char button_state;
+
+/* 0 means busy, 1 means tux free */
+int ACK;
+
+int tux_init( struct tty_struct* tty );
+int tux_buttons( struct tty_struct* tty, unsigned long arg );
+int tux_set_led( struct tty_struct* tty, unsigned long arg );
+
 #endif
 
