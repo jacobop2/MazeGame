@@ -83,13 +83,13 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
 			new_buttons |= ( up << 4 );
 
 			/* set active high */
-			button_state = new_buttons;
+			button_state = ~new_buttons;
 			break;
 		}
 	}
 
-    printk("packet : %x %x %x\n", a, b, c); 
-	printk( "Hex val: %02X\n", (unsigned char)button_state );
+    //printk("packet : %x %x %x\n", a, b, c); 
+	//printk( "Hex val: %02X\n", (unsigned char)button_state );
 }
 
 /******** IMPORTANT NOTE: READ THIS BEFORE IMPLEMENTING THE IOCTLS ************
@@ -120,6 +120,9 @@ int tuxctl_ioctl (struct tty_struct* tty, struct file* file,
 
 	/* update saved state */
 	case TUX_SET_LED:
+		if ( ACK == CONTROLLER_BUSY ) return 0;
+
+		ACK = CONTROLLER_BUSY;
 		return tux_set_led( tty, arg );
 
 	case TUX_LED_ACK:
@@ -144,10 +147,9 @@ int tux_init( struct tty_struct* tty )
 
 	buf[0] = MTCP_BIOC_ON;
 	buf[1] = MTCP_LED_USR;
-	tuxctl_ldisc_put( tty, buf, 6 );
 	ACK = CONTROLLER_FREE;
+	tuxctl_ldisc_put( tty, buf, 6 );
 
-	printk("hello");
 	return 0;
 }
 
@@ -162,15 +164,16 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 	/* save the lower 16 bits of arg, fetch graphical representation from */
 	int i;
 	unsigned char digits[NUM_DIGITS];
+
 	char active_displays;
 	char dps;
-
-	printk( "YOOOOOOOOOOOOO\n" );
+	int led_packets = LED_STATE_SIZE;
+	int idx = 2;
 	
-	for ( i = 0; i < 6; i++ )
-	{
-		printk( "%02x \n", led_state[i] );
-	}
+	// for ( i = 0; i < 6; i++ )
+	// {
+	// 	printk( "%02x \n", led_state[i] );
+	// }
 
 	for ( i = 0; i < NUM_DIGITS; i++ )
 	{
@@ -194,16 +197,26 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 		digits[i] |= ( dps & 0x01 ) << 4;
 		dps = dps >> 1;
 
-		/* add to led_state buf */
-		led_state[2 + i] = digits[i];
+		/* if the display is active, add packet */
+		if ( ( ( active_displays >> i ) & 0x01 ) == 0x01 )
+		{
+			/* set led display */
+			led_state[idx] = digits[i];
+			/* increment idx to indicate placed packet */
+			idx++;
+		}
+			
+		/* if led not active, subtract packet, do not increment idx */
+		else
+			led_packets--;
 	}
 
 	/* ensure that tux is ready, if so send packet */
-	if ( ACK == CONTROLLER_FREE )
-	{
-		ACK = CONTROLLER_BUSY;
-		tuxctl_ldisc_put( tty, led_state, LED_STATE_SIZE );
-	}
+	//	if ( ACK == CONTROLLER_FREE )
+	//{
+		//ACK = CONTROLLER_BUSY;
+		tuxctl_ldisc_put( tty, led_state, led_packets );
+	//}
 
 	return 0;
 }

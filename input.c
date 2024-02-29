@@ -216,15 +216,35 @@ void display_time_on_tux(int num_seconds) {
 
 void leds_test( int fd )
 {
-    int enable_led_offset = 0x0F0F0000;
+    int enable_led_offset = 0x0F070000;
     int i = 0;
+
+    unsigned long b;
 
     while(1)
     {
-        sleep(1);
+        sleep(2);
         ioctl( fd, TUX_SET_LED, enable_led_offset + i % 100 );
         i++;
+
+        ioctl( fd, TUX_BUTTONS, &b );
+        if ( ( b & 0xFF ) != 0 ) break; 
     }
+}
+
+void buttons_test( int fd )
+{
+    unsigned long b;
+    while ( 1 )
+    {
+        sleep(1);
+        ioctl( fd, TUX_BUTTONS, &b );
+        if ( ( b & 0xFF ) != 0 ) break; 
+
+        printf( "%lu", b );
+    }
+
+    printf( "BUTTONS: %08X \n\n", b );
 }
 
 int main() {
@@ -250,6 +270,7 @@ int main() {
     ioctl( fd, TIOCSETD, &ldisc_num );
     ioctl( fd, TUX_INIT );
 
+    //buttons_test( fd );
     leds_test( fd );
 
     //ioctl( fd, TUX_SET_LED, 0x00000000 );

@@ -334,11 +334,11 @@ unsigned long data;
 static struct termios tio_orig;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 
-static pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 
-int tux_input = 0;
+unsigned long tux_input = 0;
 
-char global_buttons = 0;
+int counter = 0;
 
 /*
  * keyboard_thread
@@ -398,43 +398,36 @@ static void *keyboard_thread(void *arg) {
 
 static void *tux_thread( void* arg )
 {
-    while ( 1 )
+    /* loop until win detected */
+    while ( winner == 0 )
     {
-        ioctl( fd_tux, TUX_SET_LED, 0x000F0001 );
+        if ( quit_flag == 1 )
+            break;
+
+        pthread_mutex_lock( &mtx );
+
+        /* while the buttons have not been pressed */
+        while ( tux_input == 0 )
+        {
+            pthread_cond_wait( &cv, &mtx );
+        }
+
+        /* UP */
+        if ( ( tux_input & 0x10 ) == 0x10 )
+            next_dir = DIR_UP;
+        /* DOWN */
+        else if ( ( tux_input & 0x20 ) == 0x20 )
+            next_dir = DIR_DOWN;
+        /* LEFT */
+        else if ( ( tux_input & 0x40 ) == 0x40 )
+            next_dir = DIR_LEFT;
+        /* RIGHT */
+        else if ( ( tux_input & 0x80 ) == 0x80 )
+            next_dir = DIR_RIGHT;
+
+        pthread_mutex_unlock( &mtx );
     }
-    // /* loop until win detected */
-    // while ( winner == 0 )
-    // {
-    //     if ( quit_flag == 1 )
-    //         break;
-
-    //     pthread_mutex_lock( &mtx );
-
-    //     /* while the buttons have not been pressed */
-    //     while ( tux_input == 0 )
-    //     {
-    //         pthread_cond_wait( &cv, &mtx );
-    //     }
-
-    //     /* shift because we only care about the movement dirs */
-    //     global_buttons = global_buttons >> 4;
-
-    //     /* UP */
-    //     if ( ( global_buttons & 0x01 ) == 1 )
-    //         next_dir = DIR_UP;
-    //     /* DOWN */
-    //     else if ( ( global_buttons & 0x02 ) == 1 )
-    //         next_dir = DIR_DOWN;
-    //     /* LEFT */
-    //     else if ( ( global_buttons & 0x04 ) == 1 )
-    //         next_dir = DIR_LEFT;
-    //     /* RIGHT */
-    //     else if ( ( global_buttons & 0x08 ) == 1 )
-    //         next_dir = DIR_RIGHT;
-
-    //     pthread_mutex_unlock( &mtx );
-    // }
-    // return NULL;
+    return NULL;
 }
 
 /* some stats about how often we take longer than a single timer tick */
@@ -614,27 +607,18 @@ static void *rtc_thread(void *arg) {
             }
 
             int draw_ft;
-            unsigned long buttons;
-
             while (ticks--) {
 
                 draw_ft = 0;
 
                 /* call ioctl to fetch tux buttons */
-                ioctl( fd, TUX_BUTTONS, &buttons );
-
-                /* clear upper bits of buttons */
-                global_buttons = buttons & 0xFF;
-
-                if ( global_buttons != 0x00 )
-                    tux_input = 1;
-                else
-                    tux_input = 0;
+                ioctl( fd_tux, TUX_BUTTONS, &tux_input );
 
                 // Lock the mutex
                 pthread_mutex_lock(&mtx);
 
-                if ( tux_input )
+                /* check for input */
+                if ( ( tux_input & 0xFF ) != 0x00 )
                     pthread_cond_signal( &cv );
                     
                 /* unlock to allow thread to continue */
@@ -812,7 +796,9 @@ static void setup_show_status_bar()
     unsigned long digits = 0;
     int n_fruits = 0;
     int time_min = 0;
+    int t_time_min = 0;
     int time_sec = 0;
+    int t_time_sec = 0;
     int time_curr = time(NULL);
     time_t time_diff = 0;
 
@@ -820,7 +806,36 @@ static void setup_show_status_bar()
     time_min = (int)time_diff / 60; // extract m
     time_sec = (int)time_diff % 60; // extract m
 
+    t_time_sec = time_sec;
+    t_time_min = time_min;
+
     n_fruits = get_num_fruits();
+
+    /* shift first digit into bits 3-0 */
+    digits |= ( ( t_time_sec % 10 ) & 0xF );
+
+    /* shift first digit into bits 7-4 */
+    t_time_sec = t_time_sec / 10;
+    digits |= ( ( t_time_sec % 10 ) & 0xF ) << 4;
+
+    /* shift first digit into bits 11-8 */
+    digits |= ( ( t_time_min % 10 ) & 0xF ) << 8;
+
+    /* shift first digit into bits 15-12 */
+    t_time_min = t_time_min / 10;
+    digits |= ( ( t_time_min % 10 ) & 0xF ) << 12;
+    
+    /* if last minute digit is zero, turn off led */
+    if ( t_time_min == 0 )
+        digits |= 0x7 << 16;
+    else
+        /* set all leds to display */
+        digits |= 0xF << 16;
+
+    /* set decimal point */
+    digits |= 0x4 << 24;
+
+    ioctl( fd_tux, TUX_SET_LED, digits );  
 
     // account for plurality
     if ( 1 == n_fruits && game_info.number != 10 )
@@ -830,17 +845,7 @@ static void setup_show_status_bar()
     else if ( 0 == n_fruits && game_info.number == 10 )
         sprintf( s, "     Level %d    %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces
     else
-        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces 
-
-    // digits |= time_sec % 10;
-    // time_sec = time_sec / 10;
-    // digits[1] = time_sec % 10;
-
-    // digits[2] = time_min % 10;
-    // time_min = time_min / 10;
-    // digits[3] = time_min % 10;
-    
-    ioctl( fd_tux, TUX_SET_LED, 0x000F0001 );             
+        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces       
 
     show_status_bar( s );
 }
@@ -856,7 +861,7 @@ static void setup_show_status_bar()
 int main() {
     int ret;
     struct termios tio_new;
-    unsigned long update_rate = 64; /* in Hz */
+    unsigned long update_rate = 32; /* in Hz */
 
     pthread_t tid1;
     pthread_t tid2;
@@ -882,8 +887,8 @@ int main() {
 
     /* initialize tux controller */
     int ldisc_num = N_MOUSE;
-    ioctl( fd, TIOCSETD, &ldisc_num );
-    ioctl( fd, TUX_INIT );
+    ioctl( fd_tux, TIOCSETD, &ldisc_num );
+    ioctl( fd_tux, TUX_INIT );
     
     // Save current terminal attributes for stdin.
     if (tcgetattr(fileno(stdin), &tio_orig) != 0) {
