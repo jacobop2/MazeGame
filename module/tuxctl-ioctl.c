@@ -155,7 +155,7 @@ int tux_init( struct tty_struct* tty )
 	/* enable BIOC events and set led to user mode */
 	buf[0] = MTCP_BIOC_ON;
 	buf[1] = MTCP_LED_USR;
-	ACK = CONTROLLER_FREE;
+	ACK = CONTROLLER_BUSY;
 	tuxctl_ldisc_put( tty, buf, 6 );
 
 	return 0;
@@ -190,8 +190,6 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 
 	char active_displays;
 	char dps;
-	int led_packets = LED_STATE_SIZE;
-	int idx = 2;
 
 	for ( i = 0; i < NUM_DIGITS; i++ )
 	{
@@ -207,30 +205,27 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 	dps = ( arg >> 8 ) & 0x0F;
 
 	led_state[0] = MTCP_LED_SET;
-	led_state[1] = active_displays;
+	/* set to update all displays */
+	led_state[1] = 0x0F;
 
 	for ( i = 0; i < NUM_DIGITS; i++ )
 	{
-		/* fill out dp bit of each led */
-		digits[i] |= ( dps & 0x01 ) << 4;
-		dps = dps >> 1;
-
 		/* if the display is active, add packet */
 		if ( ( ( active_displays >> i ) & 0x01 ) == 0x01 )
 		{
 			/* set led display */
-			led_state[idx] = digits[i];
-			/* increment idx to indicate placed packet */
-			idx++;
+			led_state[i + 2] = digits[i];
 		}
-			
-		/* if led not active, subtract packet, do not increment idx */
 		else
-			led_packets--;
+			led_state[i + 2] = 0x00;
+
+		/* set decimal point if high */
+		if ( ( ( dps >> i ) & 0x01 ) == 0x01 )
+			led_state[i + 2] |= 0x10;
 	}
 
 	/* send packets to tux */
-	tuxctl_ldisc_put( tty, led_state, led_packets );
+	tuxctl_ldisc_put( tty, led_state, LED_STATE_SIZE );
 	return 0;
 }
 
