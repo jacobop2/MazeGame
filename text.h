@@ -54,13 +54,32 @@
 #define PX_ROW 320
 #define PX_PLANE_ROW PX_ROW / 4
 
-/* set ON_COLOR to white and off color to black */
-#define ON_COLOR 0x3F
-#define OFF_COLOR 0x00
+/* set ON_COLOR to white and off color to palette 0x23 which will be updated */
+#define ON_COLOR 0x0F
+
+/* decimal 34 = 0x22 = wall palette */
+#define OFF_COLOR 34
+
+/* max number of characters on screen */
+#define MAX_STRING_LENGTH 40
+
+/* predefined palette size */
+#define PALETTE_SIZE 64
+
+/* number of registers allocated to user */
+#define USER_PALETTE_SIZE 16
+#define START_USER_PALETTE 0x20
+
+/* wall color is second palette in user palettes */
+#define WALL_PALETTE_INDEX 2
 
 /* translate an input string into graphical display 
    and store in input buffer */
-void text_to_graphics_routine( char* string, char* buffer );
+void text_to_graphics_routine( char* string, unsigned char* buffer );
+
+/* translate an input string into graphical display 
+   and store in input buffer in non modex format */
+void fruit_text_to_graphics_routine( char* string, unsigned char* buffer );
 
 /* Standard VGA text font. */
 extern unsigned char font_data[256][16];

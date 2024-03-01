@@ -56,6 +56,12 @@
 #define SCROLL_Y_DIM    IMAGE_Y_DIM                /* full image width      */
 #define SCROLL_X_WIDTH  (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 
+/* defines height above player to draw fruit text */
+#define FRUIT_TEXT_DRAW_HEIGHT 2 * BLOCK_Y_DIM
+
+/* define the palette location which will hold transparent colors */
+#define TRANSPARENT_PALETTE 0x2F
+
 /*
  * NOTES
  *
@@ -134,16 +140,28 @@ extern void clear_screens();
  */
 extern void draw_full_block(int pos_x, int pos_y, unsigned char* blk);
 
+/* draw a length * 8 block of background */
+void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length);
+
 /*
  * save a 12x12 block with upper left corner at logical position
  * (pos_x,pos_y). Draw the player on the screen using the player mask
  */
 extern void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* mask, unsigned char* buf);
 
+/* draw a length * 8 block of text above the player */
+void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf, int mode );
+
+/* set a palette color */
+void set_palette_color( char index, char red, char green, char blue );
+
 /* draw a horizontal line at vertical pixel y within the logical view window */
 extern int draw_horiz_line(int y);
 
 /* draw a vertical line at horizontal pixel x within the logical view window */
 extern int draw_vert_line(int x);
+
+/* update palette with new level colors and add transparent palettes */
+void update_palette( unsigned char * palette );
 
 #endif /* MODEX_H */

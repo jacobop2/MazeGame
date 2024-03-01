@@ -526,7 +526,7 @@ void show_screen() {
 /*
  * show_status_bar
  *   DESCRIPTION: Show the status bar on the view window.
- *   INPUTS: none
+ *   INPUTS: char* string
  *   OUTPUTS: none
  *   RETURN VALUE: none
  *   SIDE EFFECTS: translates a string input into graphical format
@@ -535,7 +535,7 @@ void show_screen() {
  */
 void show_status_bar( char* string ) {
 
-    char buffer[BUF_SIZE];    /* source address for copy             */
+    unsigned char buffer[BUF_SIZE];    /* source address for copy             */
 
     int p_off;              /* plane offset of first display plane */
     int i;                  /* loop index over video planes        */
@@ -643,6 +643,99 @@ void draw_full_block(int pos_x, int pos_y, unsigned char* blk) {
 }
 
 /*
+ * draw_char_block
+ *   DESCRIPTION: restore a string length block background
+ *   INPUTS: int pos_x, pos_y -- hold player position
+ *           unsigned char* blk -- holds buffer to draw
+ *           int length -- holds length of blk buffer
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: draw the stored bg in blk to the screen
+ */
+void draw_char_block(int pos_x, int pos_y, unsigned char* blk, int length) {
+    int dx, dy;          /* loop indices for x and y traversal of block */
+    int x_left, x_right; /* clipping limits in horizontal dimension     */
+    int y_top, y_bottom; /* clipping limits in vertical dimension       */
+
+    /* update pos_x based on str length for symmetrical text */
+    int x_off = length / 2;
+
+    /* adjust for drawing location */
+    pos_y -= FRUIT_TEXT_DRAW_HEIGHT;
+    
+    /* upper bound check */
+    if( pos_y < BLOCK_Y_DIM )
+    {
+        pos_y = BLOCK_Y_DIM / 2;
+    }
+
+    /* Clip any pixels falling off the left side of screen. */
+    if ((x_left = show_x - pos_x) < 0)
+        x_left = 0;
+    /* Clip any pixels falling off the right side of screen. */
+    if ((x_right = show_x + SCROLL_X_DIM - pos_x) > FONT_WIDTH)
+        x_right = FONT_WIDTH;
+    /* Skip the first x_left pixels in both screen position and block data. */
+    pos_x += x_left;
+    blk += x_left;
+
+    /* shift posx by the number of characters to draw on either side * font width */
+    pos_x -= x_off * FONT_WIDTH - BLOCK_X_DIM / 2;
+
+    /* side bounds checks */
+    /* trim the string if it extends past right boundary */
+    int right_trimmed_len = ( SCROLL_X_DIM + show_x < pos_x + length * FONT_WIDTH ) ? SCROLL_X_DIM + show_x - pos_x : length * FONT_WIDTH;
+    int right_trimmed_len_dif = length * FONT_WIDTH - right_trimmed_len;
+
+    /* If block is completely off-screen, we do nothing. */
+    // if (pos_x + FONT_WIDTH <= show_x || pos_x >= show_x + SCROLL_X_DIM ||
+    //     pos_y + FONT_HEIGHT <= show_y || pos_y >= show_y + SCROLL_Y_DIM)
+    //     return;
+
+    /*
+     * Adjust x_right to hold the number of pixels to be drawn, and x_left
+     * to hold the amount to skip between rows in the block, which is the
+     * sum of the original left clip and (BLOCK_X_DIM - the original right
+     * clip).
+     */
+    x_right -= x_left;
+    x_left = FONT_WIDTH - x_right;
+
+    /* Clip any pixels falling off the top of the screen. */
+    if ((y_top = show_y - pos_y) < 0)
+        y_top = 0;
+    /* Clip any pixels falling off the bottom of the screen. */
+    if ((y_bottom = show_y + SCROLL_Y_DIM - pos_y) > FONT_HEIGHT)
+        y_bottom = FONT_HEIGHT;
+    /*
+     * Skip the first y_left pixel in screen position and the first
+     * y_left rows of pixels in the block data.
+     */
+    pos_y += y_top;
+    blk += y_top * FONT_WIDTH;
+    /* Adjust y_bottom to hold the number of pixel rows to be drawn. */
+    y_bottom -= y_top;
+
+    /* store the beginning x pos */
+    int beg_pos_x = pos_x;
+
+    // loop through entire string length block
+    for ( dy = 0; dy < y_bottom; dy++, pos_y++ ) 
+    {
+        for ( dx = 0; dx < right_trimmed_len; dx++, pos_x++, blk++ )  
+        {
+            /* skip drawing any pixels off the left screen */
+            if( pos_x < BLOCK_X_DIM / 2 ) continue;
+
+            /* restore bg saved in blk */
+            *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH + (3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
+        }
+        blk += x_left + right_trimmed_len_dif;
+        pos_x = beg_pos_x;
+    }
+}
+
+/*
  * save_full_block
  *   DESCRIPTION: apply the player mask and given blk to draw to the screen
  *                store old screen in buffer for undraw
@@ -706,7 +799,7 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
             /* save value from screen into buffer */
             *buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE);
             /* check if the player mask indicates player should be drawn, if so draw */
-            if( *mask == 1)
+            if( *mask == 1 )
             {
                 *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
             }
@@ -719,6 +812,144 @@ void save_full_block(int pos_x, int pos_y, unsigned char* blk, unsigned char* ma
     }
 
     return;
+}
+
+/*
+ * draw_fruit_text
+ *   DESCRIPTION: translate input string into graphical representation, draw it above player
+ *                and save the background for later masking
+ *   INPUTS: int pos_X, pos_y -- hold player position
+ *           unsigned char * buf -- used to obtain graphical text, then drawn to screen
+ *           char * string -- string to translate
+ *           unsigned char * save_buf -- buf to hold saved background
+ *           int mode -- 0 to save block, 1 to draw
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: draws the fruit text to the screen
+ */
+void draw_fruit_text( int pos_x, int pos_y, unsigned char * buf, char * string, unsigned char * save_buf, int mode ){
+
+    int dx, dy;          /* loop indices for x and y traversal of block */
+    int x_left, x_right; /* clipping limits in horizontal dimension     */
+    int y_top, y_bottom; /* clipping limits in vertical dimension       */
+
+    /* update pos_x based on str length for symmetrical text */
+    unsigned int clen = strlen( string );
+    int x_off = clen / 2;
+
+    /* Clip any pixels falling off the left side of screen. */
+    if ((x_left = show_x - pos_x) < 0)
+        x_left = 0;
+    /* Clip any pixels falling off the right side of screen. */
+    if ((x_right = show_x + SCROLL_X_DIM - pos_x) > FONT_WIDTH)
+        x_right = FONT_WIDTH;
+    /* Skip the first x_left pixels in both screen position and block data. */
+    pos_x += x_left;
+    buf += x_left;
+
+    /* If block is completely off-screen, we do nothing. */
+    if (pos_x + FONT_WIDTH <= show_x || pos_x >= show_x + SCROLL_X_DIM ||
+        pos_y + FONT_HEIGHT <= show_y || pos_y >= show_y + SCROLL_Y_DIM)
+        return;
+
+    /* shift posx by the number of characters to draw on either side * font width */
+    pos_x -= x_off * FONT_WIDTH - BLOCK_X_DIM / 2;
+
+    /* adjust for drawing location */
+    pos_y -= FRUIT_TEXT_DRAW_HEIGHT;
+
+    /* upper bound check */
+    if( pos_y < BLOCK_Y_DIM )
+    {
+        pos_y = BLOCK_Y_DIM / 2;
+    }
+
+    /* side bounds checks */
+    /* trim the string if it extends past right boundary */
+    int right_trimmed_len = ( SCROLL_X_DIM + show_x < pos_x + clen * FONT_WIDTH ) ? SCROLL_X_DIM + show_x - pos_x : clen * FONT_WIDTH;
+    int right_trimmed_len_dif = clen * FONT_WIDTH - right_trimmed_len;
+
+    /* translate the string to graphical representation */
+    fruit_text_to_graphics_routine( string, buf );
+
+    /*
+     * Adjust x_right to hold the number of pixels to be drawn, and x_left
+     * to hold the amount to skip between rows in the block, which is the
+     * sum of the original left clip and (BLOCK_X_DIM - the original right
+     * clip).
+     */
+    x_right -= x_left;
+    x_left = FONT_WIDTH - x_right;
+
+    /* Clip any pixels falling off the top of the screen. */
+    if ((y_top = show_y - pos_y) < 0)
+        y_top = 0;
+    /* Clip any pixels falling off the bottom of the screen. */
+    if ((y_bottom = show_y + SCROLL_Y_DIM - pos_y) > FONT_HEIGHT)
+        y_bottom = FONT_HEIGHT;
+    /*
+     * Skip the first y_left pixel in screen position and the first
+     * y_left rows of pixels in the block data.
+     */
+    pos_y += y_top;
+    buf += y_top * FONT_WIDTH;
+    /* Adjust y_bottom to hold the number of pixel rows to be drawn. */
+    y_bottom -= y_top;
+
+    int beg_pos_x = pos_x;
+
+    unsigned char palette_idx;
+
+    /* loop through translated block */
+    for ( dy = 0; dy < y_bottom; dy++, pos_y++ ) 
+    {
+        for ( dx = 0; dx < right_trimmed_len; dx++, pos_x++, buf++, save_buf++ )  
+        {
+            /* skip drawing any pixels off the left screen */
+            if( pos_x < BLOCK_X_DIM / 2 ) continue;
+
+            if( mode == 0 )
+            /* save background for later masking */
+                *save_buf = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE); 
+
+            palette_idx = *save_buf;
+
+            /* draw buffer to screen */
+            if( *buf == ON_COLOR )
+            {
+                if( mode == 1 )
+                    /* offset by palette_size to access transparent colors */
+                    *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +(3 - (pos_x & 3)) * SCROLL_SIZE) = palette_idx + PALETTE_SIZE;
+            }
+        }
+        /* if the string is trimmed, ensure buffers incremented correctly */
+        save_buf += x_left + right_trimmed_len_dif;
+        buf += x_left + right_trimmed_len_dif;
+        pos_x = beg_pos_x;
+    }
+
+    return;
+}
+
+/*
+ * set_palette_color
+ *   DESCRIPTION: 
+ *   INPUTS: char index -- 8 bit value of palette to write to
+ *           char red, green, blue -- 6 bit color values to write
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: set a vga palette at a given index with a given color
+ */
+void set_palette_color( char index, char red, char green, char blue )
+{
+    if ( index < 0x20 || index > 0x2F ) return;
+
+    OUTB( 0x03C8, index );
+
+    /* Write input colors into palette */
+    OUTB( 0x03C9, red );
+    OUTB( 0x03C9, green );
+    OUTB( 0x03C9, blue );
 }
 
 /*
@@ -1027,6 +1258,57 @@ static void fill_palette() {
 
     /* Write all 64 colors from array. */
     REP_OUTSB(0x03C9, palette_RGB, 64 * 3);
+
+    int pal, color;
+    static unsigned char palette_transparent[PALETTE_SIZE][3];
+    
+    for( pal = 0; pal < PALETTE_SIZE; pal++ )
+    {
+        for( color = 0; color < 3; color++ )
+        {
+            /* write each color to the palette */
+            palette_transparent[pal][color] = ( palette_RGB[pal][color] + 0x3F ) / 2;
+        }
+    }
+
+    /* set write location to start of transparent palettes + idx */
+    OUTB( 0x03C8, PALETTE_SIZE );
+
+    /* Write all 64 colors from array. */
+    REP_OUTSB(0x03C9, palette_transparent, 64 * 3);
+}
+
+/*
+ * update_palette
+ *   DESCRIPTION: Update the user palettes in video memory
+ *   INPUTS: unsigned char * palette -- pointer to array of user palette colors
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: updates user palette values
+ */
+void update_palette( unsigned char * palette )
+{
+    int pal, color;
+    unsigned char curr_color;
+    
+    for( pal = 0; pal < USER_PALETTE_SIZE; pal++ )
+    {
+        /* set write location to start of transparent palettes + idx */
+        OUTB( 0x03C8, START_USER_PALETTE + PALETTE_SIZE + pal );
+
+        for( color = 0; color < 3; color++ )
+        {
+            curr_color = palette[pal * 3 + color];
+
+            /* if the curr color should not be updated, skip */
+            /* all empty spots are set to 0xFF in mazegame */
+            if( curr_color == 0xFF ) continue;
+
+            /* write each color to the palette */
+            OUTB( 0x03C9, ( palette[pal * 3 + color] + 0x3F ) / 2 );
+        }
+    }
+    return;
 }
 
 /*

@@ -53,11 +53,17 @@
 #include <termios.h>
 #include <pthread.h>
 
+#include <string.h>
+
 #define BACKQUOTE 96
 #define UP        65
 #define DOWN      66
 #define RIGHT     67
 #define LEFT      68
+
+#define TUX_BUTTONS _IOW('E', 0x12, unsigned long*)
+#define TUX_INIT _IO('E', 0x13)
+#define TUX_SET_LED _IOR('E', 0x10, unsigned long)
 
 /*
  * If NDEBUG is not defined, we execute sanity checks to make sure that
@@ -102,6 +108,9 @@ static void move_right(int* xpos);
 static void move_down(int* ypos);
 static void move_left(int* xpos);
 static int unveil_around_player(int play_x, int play_y);
+
+static void *tux_thread( void *arg );
+
 static void *rtc_thread(void *arg);
 static void *keyboard_thread(void *arg);
 
@@ -320,9 +329,16 @@ int next_dir = UP;
 int play_x, play_y, last_dir, dir;
 int move_cnt = 0;
 int fd;
+int fd_tux;
 unsigned long data;
 static struct termios tio_orig;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+
+unsigned long tux_input = 0;
+
+int counter = 0;
 
 /*
  * keyboard_thread
@@ -380,6 +396,48 @@ static void *keyboard_thread(void *arg) {
     return 0;
 }
 
+/*
+ * tux_thread
+ *   DESCRIPTION: Thread that handles tux inputs
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: none
+ */
+static void *tux_thread( void* arg )
+{
+    /* loop until win detected */
+    while ( winner == 0 )
+    {
+        if ( quit_flag == 1 )
+            break;
+
+        pthread_mutex_lock( &mtx );
+
+        /* while the buttons have not been pressed, wait */
+        while ( tux_input == 0 )
+        {
+            pthread_cond_wait( &cv, &mtx );
+        }
+
+        /* UP */
+        if ( ( tux_input & 0x10 ) == 0x10 )
+            next_dir = DIR_UP;
+        /* DOWN */
+        else if ( ( tux_input & 0x20 ) == 0x20 )
+            next_dir = DIR_DOWN;
+        /* LEFT */
+        else if ( ( tux_input & 0x40 ) == 0x40 )
+            next_dir = DIR_LEFT;
+        /* RIGHT */
+        else if ( ( tux_input & 0x80 ) == 0x80 )
+            next_dir = DIR_RIGHT;
+
+        pthread_mutex_unlock( &mtx );
+    }
+    return NULL;
+}
+
 /* some stats about how often we take longer than a single timer tick */
 static int goodcount = 0;
 static int badcount = 0;
@@ -401,8 +459,73 @@ static void *rtc_thread(void *arg) {
     int need_redraw = 0;
     int goto_next_level = 0;
 
+    /* Declare vars for updating player color, default = white */
+    char r2 = 0x00;
+    char g2 = 0x00;
+    char b2 = 0x00;
+
     // Loop over levels until a level is lost or quit.
     for (level = 1; (level <= MAX_LEVEL) && (quit_flag == 0); level++) {
+
+        /* Declare vars for updating player color, default = white */
+        char r = 0x3F;
+        char g = 0x3F;
+        char b = 0x3F;
+
+        /* store updated palette information for refresh by level */
+        unsigned char palette_buf[USER_PALETTE_SIZE * 3];
+
+        int i;
+        /* initialize palettes to signal that they do not need update */
+        for( i = 0; i < USER_PALETTE_SIZE * 3; i++ )
+        {
+            palette_buf[i] = 0xFF;
+        }
+
+        /* set colors for walls and status bar based on level */
+        switch ( level % 6 )
+        {
+            case 0:
+                r2 = 0x00;
+                g2 = 0x00;
+                b2 = 0x3F;
+                break;
+            case 1:
+                r2 = 0x00;
+                g2 = 0x00;
+                b2 = 0x00;
+                break;
+            case 2:
+                r2 = 0x3F;
+                g2 = 0x00;
+                b2 = 0x00;
+                break;
+            case 3:
+                r2 = 0x3F;
+                g2 = 0x1F;
+                b2 = 0x00;
+                break;
+            case 4:
+                r2 = 0x3F;
+                g2 = 0x3F;
+                b2 = 0x00;
+                break;
+            case 5:
+                r2 = 0x00;
+                g2 = 0x3F;
+                b2 = 0x00;
+                break;
+        }
+        set_palette_color( 0x22, r2, g2, b2 );
+
+        /* signal that wall palette has been updated, provide values */
+        palette_buf[WALL_PALETTE_INDEX * 3] = r2;
+        palette_buf[WALL_PALETTE_INDEX * 3 + 1] = g2;
+        palette_buf[WALL_PALETTE_INDEX * 3 + 2] = b2;
+
+        /* update the palettes to reflect change in wall color */
+        update_palette( palette_buf );
+
         // Prepare for the level.  If we fail, just let the player win.
         if (prepare_maze_level(level) != 0)
             break;
@@ -429,7 +552,6 @@ static void *rtc_thread(void *arg) {
         /* save background block and draw player */
         unsigned char back_buf[BLOCK_X_DIM * BLOCK_Y_DIM];
         save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
-        //draw_full_block(play_x, play_y, get_player_block(last_dir));
         show_screen();
 
         /* redraw background block to remove player trail */
@@ -438,9 +560,39 @@ static void *rtc_thread(void *arg) {
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
 
+        /* Declare a counter to check tick decrements */
+        int counter = 0;
+
+        /* initialize fruit timer */
+        int time_start_fruit = -1;
+        int fnum_timer = 0;
+        int fnum;
+
+        /* initialize buffer for text, and buffer to save bg colors */
+        unsigned char buffer[BUF_SIZE];
+        unsigned char save_buffer[BUF_SIZE];
+
         while ((quit_flag == 0) && (goto_next_level == 0)) {
 
             setup_show_status_bar();
+
+            /* check if a fruit is found on the current tile */
+            if ( ( fnum = check_for_fruit( play_x / BLOCK_X_DIM, play_y / BLOCK_Y_DIM ) ) != 0 )
+            {
+                /* if fruit found, set timer, save fnum */
+                time_start_fruit = time(NULL);
+                fnum_timer = fnum;
+            }
+
+            /* check current time, if enough time has elapsed, reset fnum */
+            int time_curr_fruit = time(NULL);
+            if ( -1 != time_start_fruit && ( time_curr_fruit - time_start_fruit > 3 ) )
+            {
+                fnum_timer = 0;
+                time_start_fruit = -1;
+            }
+
+            char string[MAX_STRING_LENGTH];
 
             // Wait for Periodic Interrupt
             ret = read(fd, &data, sizeof(unsigned long));
@@ -462,10 +614,38 @@ static void *rtc_thread(void *arg) {
                 goodcount++;
             }
 
+            int draw_ft;
             while (ticks--) {
+
+                draw_ft = 0;
+
+                /* call ioctl to fetch tux buttons */
+                ioctl( fd_tux, TUX_BUTTONS, &tux_input );
 
                 // Lock the mutex
                 pthread_mutex_lock(&mtx);
+
+                /* check for input */
+                if ( ( tux_input & 0xFF ) != 0x00 )
+                    pthread_cond_signal( &cv );
+                    
+                /* unlock to allow thread to continue */
+                pthread_mutex_unlock(&mtx);
+
+                pthread_mutex_lock(&mtx);
+
+                counter++;
+                /* update every 3 iterations */
+                if ( counter % 3 == 0 )
+                {
+                    /* loop colors, mod with 64 so they stay in bounds */
+                    r = ( r + 3 ) % 0x40;
+                    g = ( g + 2 ) % 0x40;
+                    b = ( b + 1 ) % 0x40;
+                }
+
+                /* set the player palette to the player color */
+                set_palette_color( 0x20, r, g, b );
 
                 // Check to see if a key has been pressed
                 if (next_dir != dir) {
@@ -536,20 +716,68 @@ static void *rtc_thread(void *arg) {
                         case DIR_LEFT:  
                             move_left(&play_x);  
                             break;
-                    }
-                    //save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
-                    //draw_full_block(play_x, play_y, get_player_block(last_dir));
-
-                    /* undraw player trail with save background */
-                    //draw_full_block(play_x, play_y, back_buf);     
+                    }   
                     need_redraw = 1;
                 }
             }
             if (1)
             {
+                /* if still within timer range, trigger text */
+                if ( fnum_timer != 0 )
+                {
+                    switch ( fnum_timer )
+                    {
+                        case 1: // apple
+                            sprintf( string, "%s", "an apple!" );
+                            break;
+                        case 2: // grapes
+                            sprintf( string, "%s", "grapes!" );
+                            break;
+                        case 3: // peach
+                            sprintf( string, "%s", "a peach!" );
+                            break;
+                        case 4: // strawberry
+                            sprintf( string, "%s", "a strawberry!" );
+                            break;
+                        case 5: // banana
+                            sprintf( string, "%s", "a banana!" );
+                            break;
+                        case 6: // watermelon
+                            sprintf( string, "%s", "watermelon!" );
+                            break;
+                        case 7: // dew
+                            sprintf( string, "%s", "YEAH! DEW!" );
+                            break;
+                        default:
+                            sprintf( string, "%s", "Fruit" );
+                    }
+
+                    /* Draw text above the player */
+                    //draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 1, 0 );
+                    draw_ft = 1;
+                }
+
+                if ( draw_ft == 1 )
+                    draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 0 );
+
                 save_full_block( play_x, play_y, get_player_block(last_dir), get_player_mask(last_dir), back_buf );
+                
+                if ( draw_ft == 1 )
+                    draw_fruit_text( play_x, play_y, buffer, string, save_buffer, 1 );
+
                 show_screen();  
-                draw_full_block(play_x, play_y, back_buf);    
+                draw_full_block(play_x, play_y, back_buf);   
+
+                if ( fnum_timer != 0 )
+                {
+                    /* Restore background */
+                    unsigned int length = strlen( string );
+
+                    /* draw each block saved in save_buffer */
+                    draw_char_block( play_x, play_y, save_buffer, length );
+                    //draw_fruit_text( play_x, play_y, save_buffer, "test", 0, 0, length );
+                }
+
                 setup_show_status_bar();
             }  
             need_redraw = 0;
@@ -573,9 +801,12 @@ static void setup_show_status_bar()
 {                
     // init vars and fetch fruits
     char s[40];
+    unsigned long digits = 0;
     int n_fruits = 0;
     int time_min = 0;
+    int t_time_min = 0;
     int time_sec = 0;
+    int t_time_sec = 0;
     int time_curr = time(NULL);
     time_t time_diff = 0;
 
@@ -583,7 +814,36 @@ static void setup_show_status_bar()
     time_min = (int)time_diff / 60; // extract m
     time_sec = (int)time_diff % 60; // extract m
 
+    t_time_sec = time_sec;
+    t_time_min = time_min;
+
     n_fruits = get_num_fruits();
+
+    /* shift first digit into bits 3-0 */
+    digits |= ( ( t_time_sec % 10 ) & 0xF );
+
+    /* shift first digit into bits 7-4 */
+    t_time_sec = t_time_sec / 10;
+    digits |= ( ( t_time_sec % 10 ) & 0xF ) << 4;
+
+    /* shift first digit into bits 11-8 */
+    digits |= ( ( t_time_min % 10 ) & 0xF ) << 8;
+
+    /* shift first digit into bits 15-12 */
+    t_time_min = t_time_min / 10;
+    digits |= ( ( t_time_min % 10 ) & 0xF ) << 12;
+    
+    /* if last minute digit is zero, turn off led */
+    if ( t_time_min == 0 )
+        digits |= 0x7 << 16;
+    else
+        /* set all leds to display */
+        digits |= 0xF << 16;
+
+    /* set decimal point */
+    digits |= 0x4 << 24;
+
+    ioctl( fd_tux, TUX_SET_LED, digits );  
 
     // account for plurality
     if ( 1 == n_fruits && game_info.number != 10 )
@@ -593,7 +853,7 @@ static void setup_show_status_bar()
     else if ( 0 == n_fruits && game_info.number == 10 )
         sprintf( s, "     Level %d    %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces
     else
-        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces                  
+        sprintf( s, "     Level %d     %d Fruits    %02d:%02d      ", game_info.number, n_fruits, time_min, time_sec ); // 5 spaces       
 
     show_status_bar( s );
 }
@@ -613,9 +873,13 @@ int main() {
 
     pthread_t tid1;
     pthread_t tid2;
+    pthread_t tid_tux;
 
     // Initialize RTC
     fd = open("/dev/rtc", O_RDONLY, 0);
+
+    // begin tux init
+    fd_tux = open( "/dev/ttyS0", O_RDWR | O_NOCTTY );
     
     // Enable RTC periodic interrupts at update_rate Hz
     // Default max is 64...must change in /proc/sys/dev/rtc/max-user-freq
@@ -628,6 +892,11 @@ int main() {
         perror("fcntl to make stdin non-blocking");
         return -1;
     }
+
+    /* initialize tux controller */
+    int ldisc_num = N_MOUSE;
+    ioctl( fd_tux, TIOCSETD, &ldisc_num );
+    ioctl( fd_tux, TUX_INIT );
     
     // Save current terminal attributes for stdin.
     if (tcgetattr(fileno(stdin), &tio_orig) != 0) {
@@ -654,10 +923,12 @@ int main() {
     // Create the threads
     pthread_create(&tid1, NULL, rtc_thread, NULL);
     pthread_create(&tid2, NULL, keyboard_thread, NULL);
+    pthread_create( &tid_tux, NULL, tux_thread, NULL );
     
     // Wait for all the threads to end
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
+    pthread_cancel( tid_tux );
 
     // Shutdown Display
     clear_mode_X();
@@ -667,6 +938,7 @@ int main() {
         
     // Close RTC
     close(fd);
+    close(fd_tux);
 
     // Print outcome of the game
     if (winner == 1) {    
