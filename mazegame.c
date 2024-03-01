@@ -396,6 +396,14 @@ static void *keyboard_thread(void *arg) {
     return 0;
 }
 
+/*
+ * tux_thread
+ *   DESCRIPTION: Thread that handles tux inputs
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: none
+ */
 static void *tux_thread( void* arg )
 {
     /* loop until win detected */
@@ -406,7 +414,7 @@ static void *tux_thread( void* arg )
 
         pthread_mutex_lock( &mtx );
 
-        /* while the buttons have not been pressed */
+        /* while the buttons have not been pressed, wait */
         while ( tux_input == 0 )
         {
             pthread_cond_wait( &cv, &mtx );

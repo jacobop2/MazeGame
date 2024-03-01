@@ -10,13 +10,13 @@
 #define TUX_LED_REQUEST _IO('E', 0x14)
 #define TUX_LED_ACK _IO('E', 0x15)
 
-
 #define LED_STATE_SIZE 6
 #define NUM_DIGITS 4
 
 #define CONTROLLER_BUSY 0
 #define CONTROLLER_FREE 1
 
+/* global vars to hold controller state */
 unsigned char led_state[LED_STATE_SIZE];
 char button_state;
 

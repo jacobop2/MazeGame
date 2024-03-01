@@ -136,15 +136,23 @@ int tuxctl_ioctl (struct tty_struct* tty, struct file* file,
     }
 }
 
-// unsigned long mp1 copy to user (void *to, const void *from, unsigned long n);
-
+/* led data representing which lights should be active for each hex digit */
 unsigned char led_data[16] = { 0xE7, 0x06, 0xCB, 0x8F, 0x2E, 0xAD, 0xED, 0x86, 
 							   0xEF, 0xAF, 0xEE, 0x6D, 0xE1, 0x4F, 0xE9, 0xE8 };
 
+/*
+ * tux_init
+ *   DESCRIPTION: helper function to initialize the tux controller
+ *   INPUTS: tty 
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: initialize tux
+ */
 int tux_init( struct tty_struct* tty )
 {
 	unsigned char buf[6];
 
+	/* enable BIOC events and set led to user mode */
 	buf[0] = MTCP_BIOC_ON;
 	buf[1] = MTCP_LED_USR;
 	ACK = CONTROLLER_FREE;
@@ -153,15 +161,30 @@ int tux_init( struct tty_struct* tty )
 	return 0;
 }
 
+/*
+ * tux_buttons
+ *   DESCRIPTION: helper function to transmit the value of the tux buttons to the users
+ *   INPUTS: tty, unsigned long arg -- pointer to be filled with button value
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: send tux buttons to user
+ */
 int tux_buttons( struct tty_struct* tty, unsigned long arg )
 {
 	copy_to_user( ( void * )arg, ( void * )&button_state, 1 );
 	return 0;
 }
 
+/*
+ * tux_set_led
+ *   DESCRIPTION: helper function to set the leds on the tux 
+ *   INPUTS: tty, arg -- contains information on desired led settings
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: set tux leds
+ */
 int tux_set_led( struct tty_struct* tty, unsigned long arg )
 {
-	/* save the lower 16 bits of arg, fetch graphical representation from */
 	int i;
 	unsigned char digits[NUM_DIGITS];
 
@@ -169,11 +192,6 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 	char dps;
 	int led_packets = LED_STATE_SIZE;
 	int idx = 2;
-	
-	// for ( i = 0; i < 6; i++ )
-	// {
-	// 	printk( "%02x \n", led_state[i] );
-	// }
 
 	for ( i = 0; i < NUM_DIGITS; i++ )
 	{
@@ -211,13 +229,8 @@ int tux_set_led( struct tty_struct* tty, unsigned long arg )
 			led_packets--;
 	}
 
-	/* ensure that tux is ready, if so send packet */
-	//	if ( ACK == CONTROLLER_FREE )
-	//{
-		//ACK = CONTROLLER_BUSY;
-		tuxctl_ldisc_put( tty, led_state, led_packets );
-	//}
-
+	/* send packets to tux */
+	tuxctl_ldisc_put( tty, led_state, led_packets );
 	return 0;
 }
 

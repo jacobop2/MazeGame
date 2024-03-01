@@ -271,7 +271,7 @@ int main() {
     ioctl( fd, TUX_INIT );
 
     //buttons_test( fd );
-    leds_test( fd );
+    //leds_test( fd );
 
     //ioctl( fd, TUX_SET_LED, 0x00000000 );
 
