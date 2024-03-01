@@ -51,7 +51,7 @@
 #define TEST_MAZE_GEN 0
 
 /* Set to 1 to remove all walls as a debugging aid. (Nate Taylor, S07). */
-#define GOD_MODE 1
+#define GOD_MODE 0
 
 /* local functions--see function headers for details */
 static int mark_maze_area(int x, int y);
@@ -409,7 +409,7 @@ int make_maze(int x_dim, int y_dim, int start_fruits) {
     /* Put the required number of fruits in the maze. */
     n_fruits = 0;
 
-    start_fruits = 10;
+    //start_fruits = 10;
 
     for (i = 0; i < start_fruits; i++)
         add_a_fruit_internal();
