@@ -30,3 +30,9 @@ b - fruit text chops off on the right side short of the wall
     - was using SCROLL_X_DIM = 320 as border, when it could be greater due to screen shifting
 b - text is blue and green instead of transparent
     - was updating wrong palette indices - expanded 64 more palettes
+b - tux buttons not accessible in mazegame 
+    - cast vars to void ptr
+b - set from leds can be spammed
+    - check for ack at beginning of function
+b - buttons recognizing as always clicked
+    - was using them as active low but had saved active high
